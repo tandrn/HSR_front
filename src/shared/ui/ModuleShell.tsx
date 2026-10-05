@@ -113,14 +113,14 @@ export function ModuleShell({
             <h1>{title}</h1>
             <p>{subtitle}</p>
           </div>
-          <ProgressRoute activePhase={phase} theoryComplete={theorySeen} />
+          <ProgressRoute activePhase={phase} />
         </header>
       ) : (
         <header className="module-workbar">
           <div className="module-workbar__title">
             <strong>{title}</strong>
           </div>
-          <ProgressRoute activePhase={phase} theoryComplete={theorySeen} />
+          <ProgressRoute activePhase={phase} />
           {phase === 'task' ? (
             <button className="button button--ghost" onClick={() => setTheoryOpen(true)} type="button">
               Теория

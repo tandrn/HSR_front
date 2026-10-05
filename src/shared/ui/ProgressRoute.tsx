@@ -1,39 +1,32 @@
 import type { ModulePhase } from '../../bridge/context';
 
-type ProgressPhase = ModulePhase | 'theory';
-
 interface ProgressStop {
-  phase: ProgressPhase;
+  phase: ModulePhase;
   label: string;
 }
 
 const STOPS: ProgressStop[] = [
-  { phase: 'intro', label: 'Интро' },
-  { phase: 'theory', label: 'Теория' },
-  { phase: 'task', label: 'Задание' },
-  { phase: 'result', label: 'Итог' },
+  { phase: 'intro', label: 'Подготовка' },
+  { phase: 'task', label: 'Выполнение' },
+  { phase: 'result', label: 'Результат' },
 ];
 
 interface ProgressRouteProps {
   activePhase: ModulePhase;
-  theoryComplete: boolean;
 }
 
-export function ProgressRoute({ activePhase, theoryComplete }: ProgressRouteProps) {
-  const activeIndex = Math.max(
-    0,
-    STOPS.findIndex((stop) => stop.phase === getVisualPhase(activePhase, theoryComplete)),
-  );
+export function ProgressRoute({ activePhase }: ProgressRouteProps) {
+  const activeIndex = STOPS.findIndex((stop) => stop.phase === activePhase);
 
   return (
-    <nav className="progress-route" aria-label="Прогресс модуля">
+    <nav className="progress-route" aria-label="Этапы работы">
       <ol>
         {STOPS.map((stop, index) => {
           const stateClass = index < activeIndex ? 'is-complete' : index === activeIndex ? 'is-current' : '';
 
           return (
             <li aria-current={index === activeIndex ? 'step' : undefined} className={stateClass} key={stop.phase}>
-              <span aria-hidden="true">{index < activeIndex ? '✓' : index + 1}</span>
+              <span aria-hidden="true">{index < activeIndex ? '✓' : String(index + 1).padStart(2, '0')}</span>
               <b>{stop.label}</b>
             </li>
           );
@@ -41,12 +34,4 @@ export function ProgressRoute({ activePhase, theoryComplete }: ProgressRouteProp
       </ol>
     </nav>
   );
-}
-
-function getVisualPhase(activePhase: ModulePhase, theoryComplete: boolean): ProgressPhase {
-  if (activePhase === 'task' && !theoryComplete) {
-    return 'theory';
-  }
-
-  return activePhase;
 }
