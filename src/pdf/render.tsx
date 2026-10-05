@@ -5,6 +5,7 @@ import type { GeoPoint, Pz1PassengerFlowResult, Pz1Result, RouteLine, TransportM
 import { correspondenceTravelTimeRows, finalIndicators, transportColumns } from '../modules/pz1/model';
 import type { StationRouteDistance } from '../modules/pz1/model';
 import { buildDisplayRoutePoints, computeRouteLineMetrics } from '../shared/lib/routeGeometry';
+import { buildPassengerFlowStackedData, passengerFlowChartModes } from '../shared/lib/passengerFlowChart';
 
 const PDF_MAP_WIDTH = 470;
 const PDF_MAP_PADDING = 12;
@@ -597,68 +598,57 @@ function PassengerFlowForecastReport({ forecast }: { forecast?: Pz1PassengerFlow
           </View>
         ))}
       </View>
-      <Text style={styles.caption}>Рисунок 2 — Сравнение существующего и прогнозного потока по видам транспорта</Text>
-      <PassengerFlowForecastChart forecast={forecast} />
+      <View wrap={false}>
+        <Text style={styles.caption}>Рисунок 2 — Распределение пассажиропотока по видам транспорта</Text>
+        <PassengerFlowForecastChart forecast={forecast} />
+      </View>
     </View>
   );
 }
 
 function PassengerFlowForecastChart({ forecast }: { forecast: Pz1PassengerFlowResult }) {
-  const rows = transportColumns.map((column) => ({
-    label: column.label,
-    existing: getPassengerFlowModeValue(forecast, column.id, 'existingAnnualFlow'),
-    forecast: getPassengerFlowModeValue(forecast, column.id, 'forecastAnnualFlow'),
-  }));
-  const maxValue = Math.max(
-    1,
-    ...rows.flatMap((row) => [row.existing, row.forecast]),
+  const periods = buildPassengerFlowStackedData(forecast);
+  const totals = periods.map((period) =>
+    passengerFlowChartModes.reduce((sum, mode) => sum + Number(period[mode.id] ?? 0), 0),
   );
+  const maxTotal = Math.max(1, ...totals);
+  const plotHeight = 132;
 
   return (
     <View style={styles.passengerFlowChartFrame} wrap={false}>
-      <View style={styles.passengerFlowLegend}>
-        <View style={styles.passengerFlowLegendItem}>
-          <View style={[styles.passengerFlowLegendSwatch, { backgroundColor: '#9aa8bb' }]} />
-          <Text>Существующий поток</Text>
-        </View>
-        <View style={styles.passengerFlowLegendItem}>
-          <View style={[styles.passengerFlowLegendSwatch, { backgroundColor: '#0aa596' }]} />
-          <Text>Прогноз</Text>
-        </View>
+      <Text style={styles.passengerFlowChartTitle}>Распределение пассажиропотока, пасс./год</Text>
+      <View style={styles.passengerFlowStackedChart}>
+        {periods.map((period, index) => (
+          <View key={period.period} style={styles.passengerFlowStackedColumn}>
+            <Text style={styles.passengerFlowStackedTotal}>{formatInteger(totals[index])}</Text>
+            <View style={styles.passengerFlowStackedArea}>
+              <View style={{ width: 88, height: (totals[index] / maxTotal) * plotHeight }}>
+                {[...passengerFlowChartModes].reverse().map((mode) => (
+                  <View
+                    key={mode.id}
+                    style={{
+                      backgroundColor: mode.color,
+                      height: (Number(period[mode.id] ?? 0) / maxTotal) * plotHeight,
+                      width: '100%',
+                    }}
+                  />
+                ))}
+              </View>
+            </View>
+            <Text style={styles.passengerFlowStackedPeriod}>{period.period}</Text>
+          </View>
+        ))}
       </View>
-      {rows.map((row) => (
-        <View key={row.label} style={styles.passengerFlowComparisonRow}>
-          <Text style={styles.passengerFlowComparisonLabel}>{row.label}</Text>
-          <View style={styles.passengerFlowComparisonBars}>
-            <PassengerFlowBar color="#9aa8bb" maxValue={maxValue} value={row.existing} />
-            <PassengerFlowBar color="#0aa596" maxValue={maxValue} value={row.forecast} />
+      <View style={styles.passengerFlowLegend}>
+        {passengerFlowChartModes.map((mode) => (
+          <View key={mode.id} style={styles.passengerFlowLegendItem}>
+            <View style={[styles.passengerFlowLegendSwatch, { backgroundColor: mode.color }]} />
+            <Text>{mode.label}</Text>
           </View>
-          <View style={styles.passengerFlowComparisonValues}>
-            <Text>{formatInteger(row.existing)}</Text>
-            <Text>{formatInteger(row.forecast)}</Text>
-          </View>
-        </View>
-      ))}
+        ))}
+      </View>
     </View>
   );
-}
-
-function PassengerFlowBar({ color, maxValue, value }: { color: string; maxValue: number; value: number }) {
-  const width = `${Math.max(value > 0 ? 1.5 : 0, (value / maxValue) * 100)}%`;
-
-  return (
-    <View style={styles.passengerFlowBarTrack}>
-      <View style={[styles.passengerFlowBarFill, { backgroundColor: color, width }]} />
-    </View>
-  );
-}
-
-function getPassengerFlowModeValue(
-  forecast: Pz1PassengerFlowResult,
-  modeId: string,
-  field: 'existingAnnualFlow' | 'forecastAnnualFlow',
-) {
-  return forecast.modes.find((mode) => mode.modeId === modeId)?.[field] ?? 0;
 }
 
 function FinalIndicatorsTable({

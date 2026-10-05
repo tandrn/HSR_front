@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Pz1PassengerFlowResult } from '../bridge/schema';
 import { createPz1PdfBlob, createPz1PdfSections, formatDistanceKm } from './render';
 
 describe('pdf render', () => {
@@ -67,6 +68,48 @@ describe('pdf render', () => {
         { label: 'А', name: 'Москва', lat: 55.7558, lng: 37.6173, type: 'terminal' },
         { label: 'Г', name: 'Санкт-Петербург', lat: 59.9343, lng: 30.3351, type: 'terminal' },
       ],
+    });
+
+    expect(blob.type).toBe('application/pdf');
+    expect(blob.size).toBeGreaterThan(10_000);
+  });
+
+  it('renders the stacked passenger flow chart in the PZ1 PDF', async () => {
+    const modeFlows = [
+      ['hSR', 0, 9_200_000],
+      ['airplane', 1_800_000, 800_000],
+      ['bus', 1_100_000, 1_700_000],
+      ['suburbanTrain', 2_000_000, 900_000],
+      ['longDistanceTrain', 500_000, 600_000],
+      ['car', 9_000_000, 5_500_000],
+    ] as const;
+    const passengerFlowForecast = {
+      totalDemand: {
+        existingAnnualFlow: 14_400_000,
+        baseForecast: 13_700_000,
+        inducedDemand: 5_000_000,
+        totalForecast: 18_700_000,
+      },
+      modes: modeFlows.map(([modeId, existingAnnualFlow, forecastAnnualFlow]) => ({
+        modeId,
+        existingAnnualFlow,
+        forecastAnnualFlow,
+        forecastShare: forecastAnnualFlow / 18_700_000,
+      })),
+    } as Pz1PassengerFlowResult;
+
+    const blob = await createPz1PdfBlob({
+      team: 'Бригада 7',
+      lineTitle: 'Москва — Санкт-Петербург',
+      variantTitle: 'Вариант 1',
+      stationCount: 2,
+      routePointCount: 2,
+      totalLengthKm: 654.3,
+      filledConsumerCells: 4,
+      runId: '20260902-1917-chart',
+      filledIndicatorCount: 2,
+      createdAt: '2026-07-12T00:00:00.000Z',
+      passengerFlowForecast,
     });
 
     expect(blob.type).toBe('application/pdf');

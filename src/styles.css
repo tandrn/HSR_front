@@ -2315,10 +2315,52 @@ input.is-invalid {
 }
 
 .forecast-chart {
-  min-height: 320px;
+  min-height: 390px;
+  margin: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 8px;
+  padding: 16px 12px 12px;
+}
+
+.forecast-chart figcaption {
+  margin: 0 0 6px;
+  color: var(--primary);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.forecast-chart-legend {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin: 4px 0 0;
+  padding: 0 10px;
+  list-style: none;
+}
+
+.forecast-chart-legend li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.forecast-chart-swatch {
+  flex: 0 0 10px;
+  height: 10px;
+  margin-top: 2px;
+  border-radius: 2px;
+}
+
+@media (max-width: 600px) {
+  .forecast-chart-legend {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* Числа не переносим — они должны читаться одной строкой. А вот название

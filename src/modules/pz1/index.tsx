@@ -4,7 +4,6 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,6 +21,7 @@ import { ModuleShell } from '../../shared/ui/ModuleShell';
 import type { ModuleTaskStep } from '../../shared/ui/ModuleShell';
 import { DurationInput } from '../../shared/ui/DurationInput';
 import { isDurationInvalid, parseDurationToMinutes } from '../../shared/lib/durationInput';
+import { buildPassengerFlowStackedData, passengerFlowChartModes } from '../../shared/lib/passengerFlowChart';
 import { FieldWithHint } from '../../shared/ui/FieldWithHint';
 import { GroupedNumberInput } from '../../shared/ui/GroupedNumberInput';
 import { reverseGeocodeRegion } from '../../shared/lib/reverseGeocode';
@@ -1474,7 +1474,7 @@ function CorrespondenceModelStep({ pairKey }: { pairKey: string }) {
   const detail = getDetailOrNull(draft, pairKey);
   const forecast = getPz1CorrespondencePassengerFlowForecast(draft, pairKey);
   const missingFields = forecast ? [] : getForecastMissingFields(draft, pairKey);
-  const chartData = forecast ? buildPassengerFlowChartData(forecast) : [];
+  const chartData = forecast ? buildPassengerFlowStackedData(forecast) : [];
 
   if (!detail) {
     return <MissingCorrespondence />;
@@ -1505,26 +1505,42 @@ function CorrespondenceModelStep({ pairKey }: { pairKey: string }) {
             </div>
           </dl>
           <div className="forecast-output-grid">
-            <div className="forecast-chart">
-              <ResponsiveContainer height={360} width="100%">
+            <figure className="forecast-chart">
+              <figcaption>Распределение пассажиропотока по видам транспорта, пасс./год</figcaption>
+              <ResponsiveContainer height={320} width="100%">
                 <BarChart
                   data={chartData}
-                  layout="vertical"
-                  margin={{ bottom: 8, left: 18, right: 28, top: 18 }}
+                  margin={{ bottom: 8, left: 8, right: 12, top: 16 }}
                 >
-                  <CartesianGrid horizontal={false} stroke="#e4edfa" />
-                  <XAxis
+                  <CartesianGrid stroke="#e4edfa" vertical={false} />
+                  <XAxis dataKey="period" tickLine={false} />
+                  <YAxis
                     tickFormatter={(value) => formatCompactPassengerFlowValue(Number(value))}
-                    type="number"
+                    tickLine={false}
+                    width={76}
                   />
-                  <YAxis dataKey="name" type="category" width={148} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="existing" fill="#9aa8bb" name="Существующий поток" radius={[0, 5, 5, 0]} />
-                  <Bar dataKey="forecast" fill="#0aa596" name="Прогноз" radius={[0, 5, 5, 0]} />
+                  <Tooltip formatter={(value) => formatPassengerFlowValue(Number(value))} />
+                  {passengerFlowChartModes.map((mode) => (
+                    <Bar
+                      key={mode.id}
+                      dataKey={mode.id}
+                      fill={mode.color}
+                      maxBarSize={150}
+                      name={mode.label}
+                      stackId="flow"
+                    />
+                  ))}
                 </BarChart>
               </ResponsiveContainer>
-            </div>
+              <ul aria-label="Виды транспорта" className="forecast-chart-legend">
+                {passengerFlowChartModes.map((mode) => (
+                  <li key={mode.id}>
+                    <span aria-hidden="true" className="forecast-chart-swatch" style={{ backgroundColor: mode.color }} />
+                    {mode.label}
+                  </li>
+                ))}
+              </ul>
+            </figure>
             <ForecastResultTable forecast={forecast} />
           </div>
         </>
@@ -2083,17 +2099,6 @@ function groupMissingFields(missingFields: string[]) {
   }
 
   return [...groups].map(([step, fields]) => ({ step, fields }));
-}
-
-function buildPassengerFlowChartData(forecast: Pz1PassengerFlowResult) {
-  return transportColumns.map((column) => {
-    const mode = forecast.modes.find((item) => item.modeId === column.id);
-    return {
-      name: column.label,
-      existing: mode?.existingAnnualFlow ?? 0,
-      forecast: mode?.forecastAnnualFlow ?? 0,
-    };
-  });
 }
 
 /**
