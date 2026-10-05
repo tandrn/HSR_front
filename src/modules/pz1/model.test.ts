@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { ROUND_TRIP_MULTIPLIER } from '../../shared/lib/passengerFlowWeights';
 import {
   countFilledConsumerCells,
   createPz1Bridge,
@@ -703,7 +702,7 @@ describe('pz1 model', () => {
     };
 
     const expectedAnnualFlow = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(
-      2_982_140 * ROUND_TRIP_MULTIPLIER,
+      2_982_140,
     );
 
     expect(getComputedFinalIndicators(draft).annualFlow).toBe(expectedAnnualFlow);
@@ -830,10 +829,9 @@ describe('pz1 model', () => {
 
     const forecast = getPz1PassengerFlowForecast(draft);
 
-    // 605 и 211,75 — величины по документу заказчика, в одну сторону.
-    // Прогноз ПЗ1 считается на поездку туда-обратно (встреча 02.09).
-    expect(forecast?.totalDemand.baseForecast).toBeCloseTo(605 * ROUND_TRIP_MULTIPLIER, 1);
-    expect(forecast?.totalDemand.inducedDemand).toBeCloseTo(211.75 * ROUND_TRIP_MULTIPLIER, 2);
+    // В итоговом DOCX нет дополнительного удвоения «туда-обратно».
+    expect(forecast?.totalDemand.baseForecast).toBeCloseTo(605, 1);
+    expect(forecast?.totalDemand.inducedDemand).toBeCloseTo(211.75, 2);
   });
 
   it('keeps regional parameters by unique station region and repeats them for matching stations', () => {
@@ -963,6 +961,11 @@ describe('pz1 model', () => {
     const baseForecast = getPz1CorrespondencePassengerFlowForecast(draft, detail.pairKey);
     expect(baseForecast).not.toBeNull();
     const baseAirplaneTtc = Number(baseForecast?.inputs.modes.airplane.totalTransportCost);
+
+    // k1 — только «Чистое время поездки»; ожидание k2 считается
+    // отдельно как 18 / частота. Доступ к вокзалу в k1 тоже не входит.
+    expect(Number(baseForecast?.inputs.modes.airplane.travelTimeHours)).toBeCloseTo(1.5, 6);
+    expect(Number(baseForecast?.inputs.modes.airplane.waitingTimeHours)).toBeCloseTo(4.5, 6);
 
     for (const row of discomfortRows.slice(0, 8)) {
       draft.correspondenceDetails[detail.pairKey].discomfortForecast.values[row.id].airplane = '1';

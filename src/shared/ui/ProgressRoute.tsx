@@ -27,16 +27,13 @@ export function ProgressRoute({ activePhase, theoryComplete }: ProgressRouteProp
 
   return (
     <nav className="progress-route" aria-label="Прогресс модуля">
-      <div className="progress-route__rail" aria-hidden="true">
-        <span style={{ width: `${(activeIndex / (STOPS.length - 1)) * 100}%` }} />
-      </div>
       <ol>
         {STOPS.map((stop, index) => {
           const stateClass = index < activeIndex ? 'is-complete' : index === activeIndex ? 'is-current' : '';
 
           return (
-            <li className={stateClass} key={stop.phase}>
-              <span>{index + 1}</span>
+            <li aria-current={index === activeIndex ? 'step' : undefined} className={stateClass} key={stop.phase}>
+              <span aria-hidden="true">{index < activeIndex ? '✓' : index + 1}</span>
               <b>{stop.label}</b>
             </li>
           );

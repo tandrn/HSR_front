@@ -26,7 +26,6 @@ import { distributePassengerFlowByMode, forecastTotalDemand } from '../../shared
 import type { PassengerFlowModeInput, TotalDemandForecastInput } from '../../shared/lib/passengerFlow';
 import {
   CAR_EXISTING_FLOW_MULTIPLIER,
-  ROUND_TRIP_MULTIPLIER,
   SERVICE_WINDOW_HOURS,
   passengerFlowModeIds,
 } from '../../shared/lib/passengerFlowWeights';
@@ -769,7 +768,6 @@ export function getPz1PassengerFlowForecast(draft: Pz1Draft): Pz1PassengerFlowRe
     const totalDemand = forecastTotalDemand({
       existingAnnualFlow,
       ...regionalInput,
-      tripsPerJourney: ROUND_TRIP_MULTIPLIER,
     });
     const distribution = distributePassengerFlowByMode({
       existingAnnualFlow,
@@ -949,6 +947,14 @@ export function getPz1CorrespondencePassengerFlowForecast(draft: Pz1Draft, pairK
     );
     const existingTravelTimeHours = getTravelTimeTotalHours(effectiveTravelTime, modeId, 'existing');
     const forecastTravelTimeHours = getTravelTimeTotalHours(effectiveTravelTime, modeId, 'forecast');
+    // k1 в итоговой модели — именно «чистое время в пути». Время ожидания
+    // входит отдельно как k2 = 18 / частота / 24, поэтому подмешивать сюда
+    // весь путь (и затем ещё раз ожидание) нельзя.
+    const forecastCleanTravelMinutes = parseDurationToMinutes(
+      effectiveTravelTime.cleanTravel[modeId].forecast,
+    );
+    const forecastCleanTravelTimeHours =
+      forecastCleanTravelMinutes === null ? null : forecastCleanTravelMinutes / 60;
     const discomfortAggregate = calculateDiscomfortAggregate(detail.discomfortForecast, modeId);
     const totalTransportCost =
       forecastTravelTimeHours === null ? null : getTotalTransportCost(draft, detail, modeId, forecastTravelTimeHours, discomfortAggregate);
@@ -958,6 +964,7 @@ export function getPz1CorrespondencePassengerFlowForecast(draft: Pz1Draft, pairK
       forecastAnnualFlowInput === null ||
       existingTravelTimeHours === null ||
       forecastTravelTimeHours === null ||
+      forecastCleanTravelTimeHours === null ||
       totalTransportCost === null ||
       totalTransportCost <= 0
     ) {
@@ -967,7 +974,7 @@ export function getPz1CorrespondencePassengerFlowForecast(draft: Pz1Draft, pairK
     modes.push({
       modeId,
       existingAnnualFlow,
-      travelTimeHours: forecastTravelTimeHours,
+      travelTimeHours: forecastCleanTravelTimeHours,
       waitingTimeHours: getWaitingTimeHours(detail, modeId),
       totalTransportCost,
       existingTravelTimeHours,
@@ -1001,7 +1008,6 @@ export function getPz1CorrespondencePassengerFlowForecast(draft: Pz1Draft, pairK
     const totalDemand = forecastTotalDemand({
       existingAnnualFlow,
       ...regionalInput,
-      tripsPerJourney: ROUND_TRIP_MULTIPLIER,
     });
     const distribution = distributePassengerFlowByMode({
       existingAnnualFlow,
@@ -2523,14 +2529,37 @@ function getAverageHourlyWageForCorrespondence(draft: Pz1Draft, detail: Pz1Corre
     .map((label) => draft.stationDrafts.find((station) => station.label === label)?.region.trim())
     .filter((region): region is string => Boolean(region));
   const uniqueRegions = [...new Set(endpointRegions)];
-  const salaries = uniqueRegions.map((region) => parseNumericInput(regional.regionParameters?.[region]?.averageSalary ?? ''));
+  const regionRows = uniqueRegions.map((region) => ({
+    salary: parseNumericInput(regional.regionParameters?.[region]?.averageSalary ?? ''),
+    forecastPopulation: parseNumericInput(regional.regionParameters?.[region]?.populationForecast ?? ''),
+  }));
 
-  if (annualWorkHours === null || annualWorkHours <= 0 || salaries.some((salary) => salary === null || salary <= 0)) {
+  if (
+    annualWorkHours === null ||
+    annualWorkHours <= 0 ||
+    regionRows.some(
+      ({ salary, forecastPopulation }) =>
+        salary === null || salary <= 0 || forecastPopulation === null || forecastPopulation <= 0,
+    )
+  ) {
     return null;
   }
 
-  const averageMonthlySalary = (salaries as number[]).reduce((sum, salary) => sum + salary, 0) / salaries.length;
-  return (averageMonthlySalary * 12) / annualWorkHours;
+  // k3_1_2_4: средняя зарплата регионов, взвешенная на их прогнозную
+  // численность населения. Простое среднее, которое было здесь раньше,
+  // расходилось с таблицей заказчика при регионах разного размера.
+  const typedRows = regionRows as Array<{ salary: number; forecastPopulation: number }>;
+  const forecastPopulationTotal = typedRows.reduce(
+    (sum, row) => sum + row.forecastPopulation,
+    0,
+  );
+  const weightedAverageMonthlySalary =
+    typedRows.reduce(
+      (sum, row) => sum + row.salary * row.forecastPopulation,
+      0,
+    ) / forecastPopulationTotal;
+
+  return (weightedAverageMonthlySalary * 12) / annualWorkHours;
 }
 
 function getLegacyOtherParametersForCorrespondence(draft: Pz1Draft, detail: Pz1CorrespondenceDetailDraft) {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BridgeSchema } from '../../bridge/schema';
+import { calculateCriticalPath } from '../../shared/lib/criticalPath';
 import {
   PZ2_LENGTH_TOLERANCE_KM,
   createInitialPz2Draft,
@@ -11,10 +12,12 @@ import {
   createPz2Stage,
   findPz2OverlappingWorks,
   getPz2RoutePointMarks,
+  getPz2ExercisesProgress,
   getPz2SegmentMarks,
   getPz2StageWorks,
   getPz2WorkMarks,
   isPz2StagesComplete,
+  isPz2ExercisesComplete,
   readPz2Position,
   removePz2Stage,
   setPz2WorkLength,
@@ -27,6 +30,7 @@ import {
   pz2WorkKinds,
   validatePz2Work,
 } from './model';
+import { pz2NetworkExercises } from './networkExercises';
 import { getPz2IconKinds, getPz2WorkIcon } from './workIcons';
 
 function draftWith(objects: Parameters<typeof getPz2LengthCheck>[0]['works']) {
@@ -353,6 +357,31 @@ describe('мост ПЗ2', () => {
     expect(result?.works[0].lengthKm).toBeNull();
   });
 
+  it('сохраняет все поля упражнения и читает прежний файл с одним ответом-путём', () => {
+    const draft = createInitialPz2Draft();
+    const submission = {
+      durationDays: '16', paths: 'A-C-E-G', reasoning: 'E заканчивается позже F',
+      timings: {
+        A: { earlyStart: '0', earlyFinish: '4', lateStart: '0', lateFinish: '4', float: '0' },
+      },
+    };
+    draft.criticalPathAnswers.bridge = submission;
+    const bridge = createPz2Bridge(draft, null);
+    const saved = bridge.completed.pz2?.criticalPath.find((answer) => answer.exerciseId === 'bridge');
+
+    expect(saved?.submission).toEqual(submission);
+    expect(createInitialPz2Draft(bridge).criticalPathAnswers.bridge).toEqual(submission);
+
+    const legacy = {
+      ...bridge,
+      completed: {
+        ...bridge.completed,
+        pz2: { ...bridge.completed.pz2, criticalPath: [{ exerciseId: 'bridge', answer: 'A-C-E-G', correct: true }] },
+      },
+    } as BridgeSchema;
+    expect(createInitialPz2Draft(legacy).criticalPathAnswers.bridge.paths).toBe('A-C-E-G');
+  });
+
   it('позиция читается по стабильному id, незнакомый шаг даёт интро', () => {
     const position = (stepId: string) =>
       readPz2Position({ position: { pz2: { phase: 'task', stepId, theorySeen: true } } } as unknown as BridgeSchema);
@@ -383,6 +412,64 @@ describe('критический путь', () => {
   it('пустой ответ не считается верным даже при пустом эталоне', () => {
     expect(checkPz2CriticalPath('', [])).toBe(false);
     expect(checkPz2CriticalPath('   ', ['1'])).toBe(false);
+  });
+});
+
+describe('обязательное выполнение упражнений', () => {
+  function solveCriticalPathExercises() {
+    return Object.fromEntries(pz2NetworkExercises.map((exercise) => {
+      const result = calculateCriticalPath(exercise.works);
+
+      return [exercise.id, {
+        durationDays: String(result.durationDays),
+        paths: result.paths.map((path) => path.join('-')).join('; '),
+        reasoning: '',
+        timings: Object.fromEntries(Object.entries(result.timings).map(([id, timing]) => [id, {
+          earlyStart: String(timing.earlyStart),
+          earlyFinish: String(timing.earlyFinish),
+          lateStart: '',
+          lateFinish: '',
+          float: '',
+        }])),
+      }];
+    }));
+  }
+
+  it('не разрешает пропустить пустой экран упражнений', () => {
+    const draft = createInitialPz2Draft();
+
+    expect(getPz2ExercisesProgress(draft)).toEqual({
+      solvedCriticalPath: 0,
+      totalCriticalPath: 7,
+      levelingSolved: false,
+      isComplete: false,
+    });
+    expect(isPz2ExercisesComplete(draft)).toBe(false);
+  });
+
+  it('требует все семь вариантов и решённое выравнивание', () => {
+    const answers = solveCriticalPathExercises();
+    const almostDone = {
+      ...createInitialPz2Draft(),
+      criticalPathAnswers: answers,
+    };
+
+    expect(getPz2ExercisesProgress(almostDone).solvedCriticalPath).toBe(7);
+    expect(isPz2ExercisesComplete(almostDone)).toBe(false);
+    expect(isPz2ExercisesComplete({ ...almostDone, levelingShifts: { w6: 6 } })).toBe(true);
+  });
+
+  it('одного нерешённого варианта достаточно, чтобы оставить переход закрытым', () => {
+    const answers = solveCriticalPathExercises();
+    delete answers.turnout;
+    const draft = {
+      ...createInitialPz2Draft(),
+      criticalPathAnswers: answers,
+      levelingShifts: { w6: 6 },
+    };
+
+    expect(getPz2ExercisesProgress(draft).solvedCriticalPath).toBe(6);
+    expect(isPz2ExercisesComplete(draft)).toBe(false);
   });
 });
 

@@ -157,68 +157,8 @@ describe('passenger flow forecast', () => {
 
     const bus = result.modes.find((mode) => mode.modeId === 'bus');
 
-    // доля 1,0 × коэффициент автобуса 0,7 × базовый прогноз
-    expect(bus?.directCapture).toBeCloseTo(baseForecast * 0.7, 6);
-  });
-
-  it('множитель поездок удваивает итог, а разбивка по видам продолжает в него складываться', () => {
-    // Заказчик 02.09: «расчёт ведётся в одну сторону, а люди ездят туда-обратно»,
-    // итог умножать на 2. В его документе итог по корреспонденции — это сумма
-    // уровней по всем видам, отдельной величины нет, поэтому удвоение итога
-    // обязано удваивать и разбивку, иначе таблица перестанет сходиться.
-    const regional = {
-      existingAnnualFlow: 1_000_000,
-      grpCurrentRegionA: 100,
-      grpCurrentRegionB: 100,
-      grpGrowthPctRegionA: 0.1,
-      grpGrowthPctRegionB: 0.1,
-      populationCurrentRegionA: 50,
-      populationCurrentRegionB: 50,
-      populationGrowthPctRegionA: 0.1,
-      populationGrowthPctRegionB: 0.1,
-      gdpPassengerFlowCoefficientRegionA: 1,
-      gdpPassengerFlowCoefficientRegionB: 1,
-      inducedDemandPct: 0.35,
-    };
-    const modes = passengerFlowModeIds.map((modeId) => ({
-      modeId,
-      existingAnnualFlow: modeId === 'hSR' ? 0 : 200_000,
-      travelTimeHours: 4,
-      waitingTimeHours: 1,
-      totalTransportCost: 2_000,
-      existingTravelTimeHours: 5,
-    }));
-
-    const oneWay = forecastTotalDemand(regional);
-    const roundTrip = forecastTotalDemand({ ...regional, tripsPerJourney: 2 });
-
-    expect(roundTrip.baseForecast).toBeCloseTo(oneWay.baseForecast * 2, 6);
-    expect(roundTrip.inducedDemand).toBeCloseTo(oneWay.inducedDemand * 2, 6);
-    expect(roundTrip.totalForecast).toBeCloseTo(oneWay.totalForecast * 2, 6);
-
-    const distribution = distributePassengerFlowByMode({
-      existingAnnualFlow: regional.existingAnnualFlow,
-      baseForecast: roundTrip.baseForecast,
-      inducedDemand: roundTrip.inducedDemand,
-      hsrTravelTimeHours: 2,
-      modes,
-    });
-
-    const sumByMode = distribution.modes.reduce((sum, mode) => sum + mode.forecastAnnualFlow, 0);
-    expect(sumByMode).toBeCloseTo(roundTrip.totalForecast, 6);
-
-    // Доли не зависят от множителя — модель линейна по потоку.
-    const oneWayDistribution = distributePassengerFlowByMode({
-      existingAnnualFlow: regional.existingAnnualFlow,
-      baseForecast: oneWay.baseForecast,
-      inducedDemand: oneWay.inducedDemand,
-      hsrTravelTimeHours: 2,
-      modes,
-    });
-
-    distribution.modes.forEach((mode, index) => {
-      expect(mode.forecastShare).toBeCloseTo(oneWayDistribution.modes[index].forecastShare, 6);
-    });
+    // Итоговый DOCX задаёт уровень 1 как долю: 1,0 × 0,7.
+    expect(bus?.directCapture).toBeCloseTo(0.7, 6);
   });
 
   it('исключённый вид даёт нули и остаётся строкой результата (ТЗ v3.6 T-1)', () => {

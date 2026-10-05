@@ -123,6 +123,7 @@ button:focus-visible {
 
 .module-shell {
   height: 100vh;
+  min-width: 0;
   overflow: hidden;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -137,6 +138,7 @@ button:focus-visible {
 
 .module-topline {
   display: grid;
+  min-width: 0;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 0.72fr);
   gap: 24px;
   align-items: end;
@@ -171,11 +173,12 @@ button:focus-visible {
 
 .module-workbar {
   display: grid;
+  min-width: 0;
   grid-template-columns: minmax(190px, 0.5fr) minmax(320px, 1fr) auto;
   gap: 18px;
   align-items: center;
-  min-height: 74px;
-  padding: 12px 24px;
+  min-height: 64px;
+  padding: 10px 24px;
   border-bottom: 1px solid var(--border-strong);
   background: rgba(255, 255, 255, 0.96);
 }
@@ -189,65 +192,60 @@ button:focus-visible {
   overflow: hidden;
   color: var(--indigo);
   font-size: 16px;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .progress-route {
-  position: relative;
   min-width: 0;
-  padding: 8px 8px 0;
-}
-
-.progress-route__rail {
-  position: absolute;
-  top: 19px;
-  left: 34px;
-  right: 34px;
-  height: 2px;
-  background: repeating-linear-gradient(90deg, var(--border-strong) 0 6px, transparent 6px 12px);
-}
-
-.progress-route__rail span {
-  display: block;
-  height: 100%;
-  background: var(--teal);
 }
 
 .progress-route ol {
-  position: relative;
-  z-index: 1;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  gap: 3px;
   margin: 0;
-  padding: 0;
+  padding: 4px;
+  border: 1px solid rgba(0, 61, 132, 0.06);
+  border-radius: 12px;
+  background: rgba(118, 118, 128, 0.1);
   list-style: none;
 }
 
 .progress-route li {
-  display: grid;
-  justify-items: center;
-  gap: 6px;
-  color: var(--future);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 34px;
+  border-radius: 9px;
+  padding: 6px 9px;
+  color: #7f8795;
+  transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
 }
 
 .progress-route li span {
-  display: grid;
+  display: inline-grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
-  border: 2px solid var(--border-strong);
+  width: 19px;
+  height: 19px;
+  flex: none;
+  border: 1px solid #c7ccd5;
   border-radius: 50%;
-  background: #fff;
-  color: transparent;
-  font-weight: 800;
-  font-size: 0;
+  background: rgba(255, 255, 255, 0.68);
+  color: #7f8795;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .progress-route li b {
-  font-size: 11px;
-  font-weight: 600;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -258,18 +256,20 @@ button:focus-visible {
 .progress-route li.is-complete span {
   background: var(--indigo);
   border-color: var(--indigo);
-}
-
-.progress-route li.is-current span {
-  width: 24px;
-  height: 24px;
-  background: var(--teal);
-  border-color: var(--teal);
-  box-shadow: 0 0 0 9px rgba(8, 166, 150, 0.18);
+  color: #fff;
+  font-size: 11px;
 }
 
 .progress-route li.is-current {
-  color: var(--teal);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(20, 29, 60, 0.08), 0 2px 8px rgba(20, 29, 60, 0.07);
+  color: var(--indigo);
+}
+
+.progress-route li.is-current span {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
 }
 
 .progress-route li.is-current b {
@@ -277,11 +277,15 @@ button:focus-visible {
 }
 
 .module-canvas {
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   padding: 18px 24px;
 }
 
 .phase-panel {
+  width: 100%;
+  min-width: 0;
   height: 100%;
   overflow-y: auto;
   border: 1px solid var(--border-strong);
@@ -290,6 +294,47 @@ button:focus-visible {
   padding: 18px 20px;
   scrollbar-color: var(--border-strong) transparent;
   scrollbar-width: thin;
+}
+
+/* Любая таблица, карта или диаграмма должна сжимать свою колонку, а не
+   растягивать рабочую область за край окна. Раньше на узком экране широкая
+   таблица увеличивала .phase-panel, после чего shell с overflow:hidden просто
+   обрезал правую половину интерфейса. */
+.phase-panel > *,
+.intro-layout > *,
+.stations-step > *,
+.hsr-time-step > *,
+.regional-step > *,
+.topic-correspondence-page > *,
+.correspondence-split-page > *,
+.station-parameters-grid > *,
+.indicator-step > *,
+.indicator-grid > *,
+.forecast-output-grid > *,
+.form-grid > *,
+.station-grid > * {
+  min-width: 0;
+}
+
+/* Общая типографическая страховка для обоих заданий. Русские слова и
+   подписи не режем внутри слова; числам и таблицам при нехватке места даём
+   управляемую прокрутку внутри их собственной рамки. */
+.module-shell h1,
+.module-shell h2,
+.module-shell h3,
+.module-shell h4,
+.module-shell p,
+.module-shell li,
+.module-shell label,
+.module-shell dt,
+.module-shell dd,
+.module-shell th,
+.module-shell td,
+.module-shell button,
+.module-shell span {
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
 }
 
 .module-actions {
@@ -302,6 +347,10 @@ button:focus-visible {
   border-top: 1px solid #cdeee1;
 }
 
+.module-actions--result {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
 .module-actions__hint {
   color: var(--teal-text);
   font-size: 12px;
@@ -310,6 +359,10 @@ button:focus-visible {
 }
 
 .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
   border: 1px solid var(--border-strong);
   border-radius: 7px;
   padding: 8px 14px;
@@ -317,6 +370,9 @@ button:focus-visible {
   background: #fff;
   font-size: 12px;
   font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .button--primary {
@@ -696,6 +752,229 @@ button:focus-visible {
 
 .exercise-answer input {
   flex: 1;
+}
+
+/* ПЗ2, экран 03: учебная сеть по семи вариантам заказчика. */
+.critical-path {
+  min-width: 0;
+}
+
+.critical-path h3 {
+  margin: 4px 0 0;
+  color: var(--primary);
+}
+
+.critical-path__counter {
+  align-self: center;
+  color: var(--teal-text);
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.critical-path__chooser {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0 14px;
+}
+
+.critical-path__chooser label,
+.critical-path__answer label,
+.critical-path__question label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.critical-path__chooser select {
+  min-width: 0;
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.critical-path__network {
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-soft);
+  padding: 10px 14px 8px;
+}
+
+.critical-path__network svg {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+}
+
+.critical-path__network p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.critical-path__node-code {
+  fill: var(--primary);
+  font-size: 19px;
+  font-weight: 800;
+}
+
+.critical-path__node-days {
+  fill: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.critical-path__table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.critical-path__table {
+  min-width: 760px;
+}
+
+.critical-path__table caption {
+  padding: 10px 12px;
+  background: var(--bg-soft);
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+}
+
+.critical-path__table th,
+.critical-path__table td {
+  padding: 8px;
+  vertical-align: middle;
+}
+
+.critical-path__table thead th {
+  background: var(--bg-soft);
+  white-space: nowrap;
+}
+
+.critical-path__table tbody th {
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.critical-path__table tbody td:nth-child(2) {
+  min-width: 210px;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.critical-path__table .numeric {
+  color: var(--primary);
+  font-weight: 800;
+  text-align: center;
+}
+
+.critical-path__table abbr {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.critical-path__number {
+  width: 58px;
+  min-width: 58px;
+  padding: 6px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.critical-path__extra {
+  margin-top: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.critical-path__answer {
+  display: grid;
+  grid-template-columns: minmax(170px, 0.35fr) minmax(260px, 1fr);
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.critical-path__answer label,
+.critical-path__question label {
+  display: grid;
+  gap: 6px;
+}
+
+.critical-path__hint,
+.critical-path__question small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.critical-path__hint {
+  margin: 7px 0 0;
+}
+
+.critical-path__question {
+  margin-top: 18px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.critical-path__question strong {
+  color: var(--primary);
+  font-size: 13px;
+}
+
+.critical-path__question p {
+  margin: 5px 0 14px;
+  line-height: 1.5;
+}
+
+.critical-path__question textarea {
+  min-height: 72px;
+}
+
+.critical-path__question small {
+  display: block;
+  margin-top: 6px;
+}
+
+.critical-path__actions {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.critical-path__actions p {
+  flex: 1;
+  margin: 0;
+}
+
+@media (max-width: 680px) {
+  .critical-path__chooser {
+    grid-template-columns: 1fr;
+  }
+
+  .critical-path__answer {
+    grid-template-columns: 1fr;
+  }
+
+  .critical-path__actions {
+    display: block;
+  }
+
+  .critical-path__actions p {
+    margin-top: 10px;
+  }
 }
 
 /* Экран 02: этапы слева, пул работ справа — работы перетаскиваются между ними. */
@@ -1226,6 +1505,10 @@ button:focus-visible {
 
 .theory-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.theory-grid--four {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .theory-grid article {
@@ -1811,6 +2094,24 @@ input.is-invalid {
   background: #fff;
 }
 
+/* Минимальная ширина зависит от насыщенности экрана. Это сохраняет слова в
+   заголовках целыми, а на телефоне включает локальную прокрутку таблицы. */
+.hsr-time-step .input-table {
+  min-width: 820px;
+}
+
+.regional-step .input-table {
+  min-width: 720px;
+}
+
+.correspondence-detail .input-table {
+  min-width: 900px;
+}
+
+.correspondence-detail .input-table:has(thead th:nth-child(8)) {
+  min-width: 1320px;
+}
+
 .input-table th,
 .input-table td {
   border-bottom: 1px solid var(--border);
@@ -1826,6 +2127,7 @@ input.is-invalid {
   color: var(--primary);
   font-size: 11px;
   font-weight: 800;
+  line-height: 1.35;
   text-transform: uppercase;
 }
 
@@ -1979,6 +2281,7 @@ input.is-invalid {
   color: var(--indigo);
   font-size: 22px;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .forecast-output-grid {
@@ -2032,9 +2335,14 @@ input.is-invalid {
 }
 
 .table-scroll {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   overflow: auto;
   border: 1px solid var(--border);
   border-radius: 8px;
+  scrollbar-color: var(--border-strong) transparent;
+  scrollbar-width: thin;
 }
 
 .data-entry small {
@@ -2238,6 +2546,103 @@ input.is-invalid {
   align-content: start;
 }
 
+/* Итог ПЗ2: левая колонка живёт собственным вертикальным потоком. Если
+   оставить три карточки прямыми детьми двухколоночной сетки, высокий отчёт
+   справа задаёт высоту первой строки и отталкивает экспорт далеко вниз. */
+.result-layout {
+  grid-template-columns: minmax(360px, 0.9fr) minmax(0, 1.1fr);
+  align-items: stretch;
+}
+
+.result-layout__aside {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-width: 0;
+  gap: 22px;
+  align-content: stretch;
+}
+
+.result-layout > *,
+.result-layout__aside > * {
+  min-width: 0;
+}
+
+/* В левой колонке ровно три показателя: четвёртая пустая ячейка визуально
+   ломала карточку и оставляла справа беспричинную четверть пространства. */
+.result-layout__aside .forecast-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.result-layout__aside .forecast-summary-grid dd,
+.result-layout .report-columns .numeric,
+.result-layout .stage-card__meta {
+  white-space: nowrap;
+}
+
+.result-layout .stage-card__head {
+  align-items: flex-start;
+}
+
+.result-layout .stage-card__meta {
+  flex: none;
+  padding-top: 2px;
+}
+
+/* Слова в итоговых карточках и отчётных таблицах не режутся посередине.
+   Если таблице тесно, прокручивается её рамка, а не ломается текст. */
+.result-layout h2,
+.result-layout h3,
+.result-layout h4,
+.result-layout p,
+.result-layout dt,
+.result-layout dd,
+.result-layout th,
+.result-layout td,
+.result-layout button,
+.result-layout span {
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+
+.result-layout .report-columns .input-table {
+  min-width: 420px;
+  table-layout: fixed;
+}
+
+.result-layout .report-columns tbody th {
+  width: 70%;
+  white-space: nowrap;
+}
+
+.result-layout .report-columns .numeric {
+  width: 30%;
+}
+
+.result-actions h2 {
+  margin: 0;
+  color: var(--indigo);
+  font-size: 24px;
+}
+
+.result-actions .status-note {
+  margin: 0;
+}
+
+/* На итоговом экране ПЗ2 левая колонка заканчивается на одной линии с
+   отчётом. Свободное место получает функциональная карточка экспорта, а
+   подтверждение сохранения остаётся у её нижнего края. */
+.result-layout__aside .result-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.result-layout__aside .result-actions > .status-note:last-child {
+  margin-top: auto;
+}
+
 .theory-overlay {
   position: fixed;
   inset: 0;
@@ -2361,6 +2766,17 @@ input.is-invalid {
     grid-column: auto;
     grid-row: auto;
   }
+
+  /* В одноколоночном режиме карточки снова живут по высоте содержимого —
+     равная нижняя линия нужна только соседним колонкам на широком экране. */
+  .result-layout {
+    align-items: start;
+  }
+
+  .result-layout__aside {
+    grid-template-rows: none;
+    height: auto;
+  }
 }
 
 @media (max-width: 760px) {
@@ -2373,15 +2789,25 @@ input.is-invalid {
   }
 
   .phase-panel {
+    width: 100%;
+    min-width: 0;
     padding: 14px;
   }
 
   .module-actions {
     grid-template-columns: 1fr;
+    gap: 8px;
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
 
   .module-actions__hint {
     order: -1;
+    line-height: 1.4;
+  }
+
+  .module-actions .button {
+    width: 100%;
   }
 
   .theory-panel__actions {
@@ -2395,6 +2821,40 @@ input.is-invalid {
   .summary-grid,
   .forecast-summary-grid,
   .field-with-hint {
+    grid-template-columns: 1fr;
+  }
+
+  .step-header {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .step-header__number {
+    font-size: 21px;
+  }
+
+  .step-header h2,
+  .form-section h2,
+  .import-section h2,
+  .result-summary h2,
+  .theory-layout h2,
+  .result-actions h2 {
+    font-size: 21px;
+    line-height: 1.2;
+  }
+
+  .form-section,
+  .import-section,
+  .result-summary,
+  .result-actions,
+  .map-placeholder,
+  .data-entry,
+  .theory-layout section,
+  .forecast-summary-panel {
+    padding: 14px;
+  }
+
+  .result-layout__aside .forecast-summary-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2423,7 +2883,92 @@ input.is-invalid {
   }
 
   .progress-route li b {
-    font-size: 11px;
+    font-size: 10px;
+  }
+
+  .module-workbar__title strong {
+    white-space: normal;
+    line-height: 1.25;
+  }
+
+  .coordinate-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-card__head,
+  .work-card,
+  .plan-stages li {
+    align-items: flex-start;
+  }
+
+  .stage-card__head {
+    flex-wrap: wrap;
+  }
+
+  .stage-card__title,
+  .stage-card__head h4 {
+    min-width: 160px;
+  }
+
+  .stage-card__meta {
+    line-height: 1.35;
+  }
+
+  .field-with-hint .field-error {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .module-topline h1,
+  .empty-module h1 {
+    font-size: 24px;
+    line-height: 1.08;
+  }
+
+  .module-topline,
+  .module-workbar,
+  .module-canvas,
+  .module-actions {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .phase-panel {
+    padding: 12px;
+    border-radius: 10px;
+  }
+
+  .progress-route {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .progress-route ol {
+    gap: 2px;
+    padding: 3px;
+    border-radius: 11px;
+  }
+
+  .progress-route li {
+    gap: 4px;
+    min-height: 31px;
+    padding: 4px 3px;
+  }
+
+  .progress-route li span {
+    width: 17px;
+    height: 17px;
+    font-size: 9px;
+  }
+
+  .progress-route li b {
+    font-size: 9px;
+  }
+
+  .forecast-summary-grid div,
+  .summary-grid div {
+    padding: 10px;
   }
 }
 
@@ -2693,4 +3238,3 @@ input.is-invalid {
   font-weight: 700;
   line-height: 1.4;
 }
-

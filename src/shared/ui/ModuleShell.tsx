@@ -118,7 +118,6 @@ export function ModuleShell({
       ) : (
         <header className="module-workbar">
           <div className="module-workbar__title">
-            <span className="eyebrow">Рабочее пространство</span>
             <strong>{title}</strong>
           </div>
           <ProgressRoute activePhase={phase} theoryComplete={theorySeen} />
@@ -146,7 +145,14 @@ export function ModuleShell({
         {phase === 'result' && <PhasePanel phase="result">{result}</PhasePanel>}
       </section>
 
-      {phase !== 'result' ? (
+      {phase === 'result' ? (
+        <footer className="module-actions module-actions--result">
+          <button className="button button--outline" onClick={goBack} type="button">
+            ← Вернуться к редактированию
+          </button>
+          <span className="module-actions__hint">Можно изменить данные и снова перейти к итогу.</span>
+        </footer>
+      ) : (
         <footer className="module-actions">
           <button className="button button--outline" disabled={phase === 'intro'} onClick={goBack} type="button">
             ← Назад
@@ -168,7 +174,7 @@ export function ModuleShell({
             {getPrimaryActionLabel(phase, currentStepIndex, taskSteps.length)}
           </button>
         </footer>
-      ) : null}
+      )}
 
       {phase === 'task' && theoryOpen ? (
         <TheoryOverlay

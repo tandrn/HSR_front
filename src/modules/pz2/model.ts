@@ -2,6 +2,7 @@ import { createBridge } from '../../bridge/io';
 import type {
   BridgeSchema,
   ModulePosition,
+  Pz2CriticalPathAnswer,
   Pz2PlanResult,
   Pz2ReportResult,
   Pz2Result,
@@ -9,9 +10,12 @@ import type {
   Pz2Work,
 } from '../../bridge/schema';
 import { buildRoutePointsBySegment, computeRouteLineMetrics } from '../../shared/lib/routeGeometry';
+import { calculateCriticalPath, checkCriticalPathSubmission, createEmptyCriticalPathSubmission } from '../../shared/lib/criticalPath';
+import type { CriticalPathSubmission, CriticalPathTimingInput } from '../../shared/lib/criticalPath';
 import { createRouteRulerFromSegments, projectOntoRoute } from '../../shared/lib/routeRuler';
 import type { RouteRuler } from '../../shared/lib/routeRuler';
 import { pz2NetworkExercises } from './networkExercises';
+import { getPz2Leveling } from './leveling';
 import { getPz2WorkIcon } from './workIcons';
 import { getPz2Plan, getPz2Report } from './plan';
 import type {
@@ -131,7 +135,7 @@ export function createInitialPz2Draft(importedBridge?: BridgeSchema | null): Pz2
       ...(work.span ? { span: work.span } : {}),
     })),
     stages: saved.stages.map((stage) => ({ id: stage.id, title: stage.title, order: stage.order })),
-    criticalPathAnswers: Object.fromEntries(saved.criticalPath.map((answer) => [answer.exerciseId, answer.answer])),
+    criticalPathAnswers: Object.fromEntries(saved.criticalPath.map((answer) => [answer.exerciseId, restoreCriticalPathAnswer(answer)])),
     ...(saved.levelingShifts ? { levelingShifts: saved.levelingShifts } : {}),
     totalWorkers: saved.plan.totalWorkers > 0 ? formatPz2InputNumber(saved.plan.totalWorkers) : '',
     workersByStage: Object.fromEntries(
@@ -143,6 +147,35 @@ export function createInitialPz2Draft(importedBridge?: BridgeSchema | null): Pz2
     // Снимок возвращается из файла: иначе отчёт, собранный сразу после
     // загрузки, выходил бы без карты, хотя карта у студента уже была.
     ...(saved.previewImage ? { previewImage: saved.previewImage } : {}),
+  };
+}
+
+/** Старые файлы хранят только строку пути; новый ответ восстанавливается целиком. */
+function restoreCriticalPathAnswer(answer: Pz2CriticalPathAnswer): CriticalPathSubmission {
+  const saved = answer.submission;
+  if (!saved || typeof saved !== 'object') {
+    return { ...createEmptyCriticalPathSubmission(), paths: answer.answer };
+  }
+
+  const timings: Record<string, CriticalPathTimingInput> = {};
+  if (saved.timings && typeof saved.timings === 'object') {
+    for (const [id, row] of Object.entries(saved.timings)) {
+      if (row && typeof row === 'object') {
+        timings[id] = {
+          earlyStart: typeof row.earlyStart === 'string' ? row.earlyStart : '',
+          earlyFinish: typeof row.earlyFinish === 'string' ? row.earlyFinish : '',
+          lateStart: typeof row.lateStart === 'string' ? row.lateStart : '',
+          lateFinish: typeof row.lateFinish === 'string' ? row.lateFinish : '',
+          float: typeof row.float === 'string' ? row.float : '',
+        };
+      }
+    }
+  }
+  return {
+    durationDays: typeof saved.durationDays === 'string' ? saved.durationDays : '',
+    paths: typeof saved.paths === 'string' ? saved.paths : answer.answer,
+    timings,
+    reasoning: typeof saved.reasoning === 'string' ? saved.reasoning : '',
   };
 }
 
@@ -642,6 +675,42 @@ export function isPz2PlanComplete(draft: Pz2Draft) {
   return draft.stages.every((stage) => (parsePz2Number(draft.workersByStage[stage.id] ?? '') ?? 0) > 0);
 }
 
+export interface Pz2ExercisesProgress {
+  solvedCriticalPath: number;
+  totalCriticalPath: number;
+  levelingSolved: boolean;
+  isComplete: boolean;
+}
+
+/**
+ * Экран упражнений нельзя пропустить: студент решает все варианты по
+ * критическому пути и снимает перегрузку в задаче на выравнивание.
+ * Дополнительные поздние сроки и письменное объяснение остаются добровольными.
+ */
+export function getPz2ExercisesProgress(draft: Pz2Draft): Pz2ExercisesProgress {
+  const solvedCriticalPath = pz2NetworkExercises.filter((exercise) => {
+    const submission = draft.criticalPathAnswers[exercise.id];
+
+    return Boolean(
+      submission
+      && checkCriticalPathSubmission(submission, calculateCriticalPath(exercise.works)).coreCorrect,
+    );
+  }).length;
+  const levelingSolved = getPz2Leveling(draft.levelingShifts ?? {}).isSolved;
+  const totalCriticalPath = pz2NetworkExercises.length;
+
+  return {
+    solvedCriticalPath,
+    totalCriticalPath,
+    levelingSolved,
+    isComplete: solvedCriticalPath === totalCriticalPath && levelingSolved,
+  };
+}
+
+export function isPz2ExercisesComplete(draft: Pz2Draft) {
+  return getPz2ExercisesProgress(draft).isComplete;
+}
+
 /** Шаги задания стабильными идентификаторами: позиция в файле не зависит от порядка. */
 export const pz2StepIds = ['works', 'stages', 'exercises', 'plan'] as const;
 
@@ -669,11 +738,15 @@ export function createPz2Result(draft: Pz2Draft, routeLengthKm: number): Pz2Resu
       };
     }),
     stages: draft.stages.map((stage): Pz2Stage => ({ id: stage.id, title: stage.title, order: stage.order })),
-    criticalPath: pz2NetworkExercises.map((exercise) => ({
-      exerciseId: exercise.id,
-      answer: draft.criticalPathAnswers[exercise.id] ?? '',
-      correct: checkPz2CriticalPath(draft.criticalPathAnswers[exercise.id] ?? '', exercise.answer),
-    })),
+    criticalPath: pz2NetworkExercises.map((exercise) => {
+      const submission = draft.criticalPathAnswers[exercise.id] ?? createEmptyCriticalPathSubmission();
+      return {
+        exerciseId: exercise.id,
+        answer: submission.paths,
+        correct: checkCriticalPathSubmission(submission, calculateCriticalPath(exercise.works)).coreCorrect,
+        submission,
+      };
+    }),
     plan: createPz2PlanResult(draft),
     report: createPz2ReportResult(draft),
     ...(draft.levelingShifts ? { levelingShifts: draft.levelingShifts } : {}),

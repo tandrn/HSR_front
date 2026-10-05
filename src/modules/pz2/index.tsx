@@ -12,10 +12,12 @@ import {
   createPz2Bridge,
   formatPz2Km,
   getPz2LengthCheck,
+  getPz2ExercisesProgress,
   getPz2RouteSource,
   getPz2SegmentMarks,
   getPz2StageWorks,
   isPz2PlanComplete,
+  isPz2ExercisesComplete,
   isPz2StagesComplete,
   isPz2WorksComplete,
   pz2SoilConditions,
@@ -63,6 +65,8 @@ function Pz2Workspace() {
       goal:
         'Определите критический путь по сетевой диаграмме и разберитесь, как резервы работ позволяют выровнять число занятых людей во времени.',
       content: <ExercisesStep />,
+      isComplete: isPz2ExercisesComplete(draft),
+      completionHint: describeExercisesHint(draft),
     },
     {
       id: 'plan',
@@ -116,6 +120,18 @@ function describeStagesHint(draft: Pz2Draft) {
   const left = getPz2StageWorks(draft, null).length;
 
   return left > 0 ? `В пуле осталось работ: ${left}` : 'Добавьте работы на предыдущем шаге';
+}
+
+function describeExercisesHint(draft: Pz2Draft) {
+  const progress = getPz2ExercisesProgress(draft);
+
+  if (progress.solvedCriticalPath < progress.totalCriticalPath) {
+    return `Решите все варианты критического пути: ${progress.solvedCriticalPath} из ${progress.totalCriticalPath}`;
+  }
+
+  return progress.levelingSolved
+    ? 'Оба упражнения выполнены'
+    : 'Выровняйте загрузку: дней с нехваткой должно остаться 0';
 }
 
 function Pz2IntroStep() {
@@ -233,19 +249,49 @@ function Pz2IntroStep() {
 function Pz2TheoryStep() {
   return (
     <div className="theory-layout">
-      <p>
-        Чтобы построить линию, её сначала разбирают на работы: где-то ремонтируют существующий путь, где-то насыпают
-        земляное полотно, где-то нужны эстакада, мост или тоннель. У каждой работы есть тип и длина — из них потом
-        складывается список работ.
-      </p>
-      <p>
-        Длину участков меряют по карте. Неточности неизбежны, поэтому в конце сумма участков сверяется с длиной
-        маршрута: расхождение показывает, что часть трассы осталась без работ или что участки наложились друг на
-        друга.
-      </p>
-      <p>
-        Отдельно считают работы, у которых длины нет, — например стрелочные переводы: они меряются штуками.
-      </p>
+      <section>
+        <p className="eyebrow">Календарно-сетевой график</p>
+        <h2>Как работы определяют срок строительства</h2>
+        <p>
+          Сначала трассу разбивают на работы и пространственные этапы. Затем связи между работами показывают, что
+          можно выполнять параллельно, а что должно ждать завершения предшественников. Расчёт начинается с дня 0.
+        </p>
+      </section>
+
+      <div className="theory-grid theory-grid--four">
+        <article>
+          <span>01</span>
+          <h3>Прямой проход</h3>
+          <p>
+            Работа без предшественников начинается в день 0. Для остальных раннее начало равно самому позднему
+            раннему окончанию предшественников. Раннее окончание равно началу плюс длительность.
+          </p>
+        </article>
+        <article>
+          <span>02</span>
+          <h3>Срок проекта</h3>
+          <p>
+            Минимальный срок задаёт самое позднее окончание завершающей работы. Ускорение короткой параллельной ветви
+            не сокращает проект, пока более длинная ветвь всё ещё задерживает следующую работу.
+          </p>
+        </article>
+        <article>
+          <span>03</span>
+          <h3>Критический путь</h3>
+          <p>
+            Обратный проход даёт поздние сроки. Полный резерв равен позднему началу минус раннее начало. Непрерывная
+            цепочка работ с нулевым резервом образует критический путь; таких цепочек может быть несколько.
+          </p>
+        </article>
+        <article>
+          <span>04</span>
+          <h3>Выравнивание ресурсов</h3>
+          <p>
+            Критические работы двигать нельзя. Некритические можно сдвигать внутри их резерва, уменьшая пик занятости
+            людей без изменения общего срока проекта.
+          </p>
+        </article>
+      </div>
     </div>
   );
 }
@@ -390,61 +436,71 @@ function Pz2ResultStep() {
     }
   }
 
+  function downloadJson() {
+    jsonFileDraftStorage.save(createPz2Bridge(draft, importedBridge), 'vsm-pz2-bridge.json');
+    setExportStatus('✓ Файл сохранён');
+  }
+
   return (
     <div className="result-layout">
-      <section className="form-section">
-        <p className="eyebrow">Итог</p>
-        <h2>Работ по трассе: {draft.works.length}</h2>
+      <div className="result-layout__aside">
+        <section className="form-section">
+          <p className="eyebrow">Итог</p>
+          <h2>Работ по трассе: {draft.works.length}</h2>
 
-        <dl className="forecast-summary-grid forecast-summary-grid--compact">
-          <div>
-            <dt>Намерено</dt>
-            <dd>{formatPz2Km(check.measuredKm)}</dd>
-          </div>
-          <div>
-            <dt>Маршрут из ПЗ1</dt>
-            <dd>{formatPz2Km(check.routeKm)}</dd>
-          </div>
-          <div>
-            <dt>Этапов</dt>
-            <dd>{draft.stages.length}</dd>
-          </div>
-        </dl>
+          <dl className="forecast-summary-grid forecast-summary-grid--compact">
+            <div>
+              <dt>Намерено</dt>
+              <dd>{formatPz2Km(check.measuredKm)}</dd>
+            </div>
+            <div>
+              <dt>Маршрут из ПЗ1</dt>
+              <dd>{formatPz2Km(check.routeKm)}</dd>
+            </div>
+            <div>
+              <dt>Этапов</dt>
+              <dd>{draft.stages.length}</dd>
+            </div>
+          </dl>
 
-        {draft.stages.length > 0 ? (
-          <ul className="stage-list">
-            {draft.stages.map((stage) => {
-              const works = getPz2StageWorks(draft, stage.id);
+          {draft.stages.length > 0 ? (
+            <ul className="stage-list">
+              {draft.stages.map((stage) => {
+                const works = getPz2StageWorks(draft, stage.id);
 
-              return (
-                <li className="stage-card" key={stage.id}>
-                  <div className="stage-card__head">
-                    <h4>{stage.title}</h4>
-                    <span className="stage-card__meta">Работ: {works.length}</span>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
+                return (
+                  <li className="stage-card" key={stage.id}>
+                    <div className="stage-card__head">
+                      <h4>{stage.title}</h4>
+                      <span className="stage-card__meta">Работ: {works.length}</span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
 
-        {inPool > 0 ? <p className="field-warning">В пуле осталось работ: {inPool}</p> : null}
-      </section>
+          {inPool > 0 ? <p className="field-warning">В пуле осталось работ: {inPool}</p> : null}
+        </section>
+
+        <section className="result-actions">
+          <p className="eyebrow">Экспорт</p>
+          <h2>Скачать файлы</h2>
+          <p className="status-note">
+            PDF нужен для сдачи преподавателю. JSON — чтобы продолжить работу с теми же данными или передать её в следующее
+            задание.
+          </p>
+          <button className="button button--primary" onClick={() => void downloadPdf()} type="button">
+            Скачать PDF
+          </button>
+          <button className="button button--outline" onClick={downloadJson} type="button">
+            Скачать JSON
+          </button>
+          {exportStatus ? <p className="status-note">{exportStatus}</p> : null}
+        </section>
+      </div>
 
       <Pz2ReportSection />
-
-      <section className="result-actions">
-        <p className="eyebrow">Экспорт</p>
-        <h2>Скачать файлы</h2>
-        <p className="status-note">
-          PDF нужен для сдачи преподавателю. JSON — чтобы продолжить работу с теми же данными или передать её в следующее
-          задание.
-        </p>
-        <button className="button button--primary" onClick={() => void downloadPdf()} type="button">
-          Скачать PDF
-        </button>
-        {exportStatus ? <p className="status-note">{exportStatus}</p> : null}
-      </section>
     </div>
   );
 }

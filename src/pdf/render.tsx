@@ -1,4 +1,4 @@
-import { Circle, Document, Font, Image, Page, Polyline, Rect, Svg, Text, View, pdf } from '@react-pdf/renderer';
+import { Circle, Document, Font, Image, Page, Polyline, Svg, Text, View, pdf } from '@react-pdf/renderer';
 import { downloadTextFile } from '../bridge/io';
 import { KeyValueTable, PAGE_SIZE, PDF_MAP_HEIGHT, formatDate, formatRequiredValue, styles } from './common';
 import type { GeoPoint, Pz1PassengerFlowResult, Pz1Result, RouteLine, TransportModeId } from '../bridge/schema';
@@ -49,7 +49,6 @@ export interface Pz1PdfSummary {
   finalIndicators?: Pz1Result['finalIndicators'];
   hsrTravelTime?: Pz1Result['hsrTravelTime'];
   passengerFlowForecast?: Pz1PassengerFlowResult;
-  passengerFlowChartImage?: string;
   regionalCharacteristics?: Pz1Result['regionalCharacteristics'];
   notes?: string;
   stations?: PdfStation[];
@@ -157,10 +156,7 @@ function Pz1ReportDocument({ summary }: { summary: Pz1PdfSummary }) {
         <RegionalCharacteristicsTable regionalCharacteristics={summary.regionalCharacteristics} />
         <CorrespondenceScenariosTable scenarios={summary.correspondenceScenarios ?? {}} />
         <Text style={styles.sectionTitle}>4. Прогноз пассажиропотока</Text>
-        <PassengerFlowForecastReport
-          chartImage={summary.passengerFlowChartImage}
-          forecast={summary.passengerFlowForecast}
-        />
+        <PassengerFlowForecastReport forecast={summary.passengerFlowForecast} />
       </Page>
 
       <Page size={PAGE_SIZE} style={styles.page}>
@@ -195,10 +191,10 @@ function Pz1ReportDocument({ summary }: { summary: Pz1PdfSummary }) {
 function RunningHeader({ section, summary }: { section: string; summary: Pz1PdfSummary }) {
   return (
     <View style={styles.runningHeader} fixed>
-      <Text>
+      <Text style={styles.runningHeaderPrimary}>
         Команда «{formatRequiredValue(summary.team)}» · ПЗ1 · {formatRequiredValue(summary.lineTitle)}
       </Text>
-      <Text>{section}</Text>
+      <Text style={styles.runningHeaderSection}>{section}</Text>
     </View>
   );
 }
@@ -238,14 +234,24 @@ function MapPlanPreview({
           width={PDF_MAP_WIDTH}
         >
           {overlay.routePoints.length >= 2 ? (
-            <Polyline
-              fill="none"
-              points={formatSvgPoints(overlay.routePoints)}
-              stroke="#E0182D"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={3.5}
-            />
+            <>
+              <Polyline
+                fill="none"
+                points={formatSvgPoints(overlay.routePoints)}
+                stroke="#ffffff"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={6.5}
+              />
+              <Polyline
+                fill="none"
+                points={formatSvgPoints(overlay.routePoints)}
+                stroke="#E0182D"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={3.5}
+              />
+            </>
           ) : null}
           {overlay.stationPoints.map((point) => (
             <Circle cx={point.x} cy={point.y} fill="#003D84" key={point.key} r={4.2} stroke="#ffffff" strokeWidth={1.5} />
@@ -555,22 +561,7 @@ function CorrespondenceScenariosTable({ scenarios }: { scenarios: NonNullable<Pz
   );
 }
 
-const pdfPassengerFlowChartColors: Record<string, string> = {
-  hSR: '#e0182d',
-  airplane: '#003d84',
-  bus: '#08a696',
-  suburbanTrain: '#7b61ff',
-  longDistanceTrain: '#f59e0b',
-  car: '#475569',
-};
-
-function PassengerFlowForecastReport({
-  chartImage,
-  forecast,
-}: {
-  chartImage?: string;
-  forecast?: Pz1PassengerFlowResult;
-}) {
+function PassengerFlowForecastReport({ forecast }: { forecast?: Pz1PassengerFlowResult }) {
   if (!forecast) {
     return <Text style={styles.paragraph}>Прогноз пассажиропотока пока не рассчитан.</Text>;
   }
@@ -606,78 +597,58 @@ function PassengerFlowForecastReport({
           </View>
         ))}
       </View>
-      <Text style={styles.caption}>Рисунок 2 — Существующий поток и прогноз с накоплением по видам транспорта</Text>
-      {chartImage ? (
-        <Image src={chartImage} style={styles.passengerFlowChartImage} />
-      ) : (
-        <PassengerFlowForecastChart forecast={forecast} />
-      )}
+      <Text style={styles.caption}>Рисунок 2 — Сравнение существующего и прогнозного потока по видам транспорта</Text>
+      <PassengerFlowForecastChart forecast={forecast} />
     </View>
   );
 }
 
 function PassengerFlowForecastChart({ forecast }: { forecast: Pz1PassengerFlowResult }) {
-  const barGroups = [
-    {
-      label: 'Существующий поток',
-      values: transportColumns.map((column) => getPassengerFlowModeValue(forecast, column.id, 'existingAnnualFlow')),
-    },
-    {
-      label: 'Прогноз',
-      values: transportColumns.map((column) => getPassengerFlowModeValue(forecast, column.id, 'forecastAnnualFlow')),
-    },
-  ];
-  const maxTotal = Math.max(
+  const rows = transportColumns.map((column) => ({
+    label: column.label,
+    existing: getPassengerFlowModeValue(forecast, column.id, 'existingAnnualFlow'),
+    forecast: getPassengerFlowModeValue(forecast, column.id, 'forecastAnnualFlow'),
+  }));
+  const maxValue = Math.max(
     1,
-    ...barGroups.map((group) => group.values.reduce((sum, value) => sum + value, 0)),
+    ...rows.flatMap((row) => [row.existing, row.forecast]),
   );
-  const chartHeight = 96;
-  const chartBottom = 112;
-  const barWidth = 72;
-  const barXs = [132, 282];
 
   return (
-    <View style={styles.passengerFlowChartFrame}>
-      <Svg height={138} viewBox="0 0 470 138" width={470}>
-        <Rect fill="#ffffff" height={138} width={470} x={0} y={0} />
-        <Rect fill="#e4edfa" height={1} width={360} x={62} y={chartBottom} />
-        {barGroups.map((group, groupIndex) => {
-          let offset = 0;
-
-          return transportColumns.map((column, modeIndex) => {
-            const value = group.values[modeIndex];
-            const segmentHeight = (value / maxTotal) * chartHeight;
-            const y = chartBottom - offset - segmentHeight;
-            offset += segmentHeight;
-
-            return (
-              <Rect
-                fill={pdfPassengerFlowChartColors[column.id]}
-                height={Math.max(segmentHeight, value > 0 ? 1 : 0)}
-                key={`${group.label}-${column.id}`}
-                width={barWidth}
-                x={barXs[groupIndex]}
-                y={y}
-              />
-            );
-          });
-        })}
-      </Svg>
-      <View style={styles.passengerFlowChartLabels}>
-        {barGroups.map((group) => (
-          <Text key={group.label} style={styles.passengerFlowChartLabel}>
-            {group.label}
-          </Text>
-        ))}
-      </View>
+    <View style={styles.passengerFlowChartFrame} wrap={false}>
       <View style={styles.passengerFlowLegend}>
-        {transportColumns.map((column) => (
-          <View key={column.id} style={styles.passengerFlowLegendItem}>
-            <View style={[styles.passengerFlowLegendSwatch, { backgroundColor: pdfPassengerFlowChartColors[column.id] }]} />
-            <Text>{column.label}</Text>
-          </View>
-        ))}
+        <View style={styles.passengerFlowLegendItem}>
+          <View style={[styles.passengerFlowLegendSwatch, { backgroundColor: '#9aa8bb' }]} />
+          <Text>Существующий поток</Text>
+        </View>
+        <View style={styles.passengerFlowLegendItem}>
+          <View style={[styles.passengerFlowLegendSwatch, { backgroundColor: '#0aa596' }]} />
+          <Text>Прогноз</Text>
+        </View>
       </View>
+      {rows.map((row) => (
+        <View key={row.label} style={styles.passengerFlowComparisonRow}>
+          <Text style={styles.passengerFlowComparisonLabel}>{row.label}</Text>
+          <View style={styles.passengerFlowComparisonBars}>
+            <PassengerFlowBar color="#9aa8bb" maxValue={maxValue} value={row.existing} />
+            <PassengerFlowBar color="#0aa596" maxValue={maxValue} value={row.forecast} />
+          </View>
+          <View style={styles.passengerFlowComparisonValues}>
+            <Text>{formatInteger(row.existing)}</Text>
+            <Text>{formatInteger(row.forecast)}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function PassengerFlowBar({ color, maxValue, value }: { color: string; maxValue: number; value: number }) {
+  const width = `${Math.max(value > 0 ? 1.5 : 0, (value / maxValue) * 100)}%`;
+
+  return (
+    <View style={styles.passengerFlowBarTrack}>
+      <View style={[styles.passengerFlowBarFill, { backgroundColor: color, width }]} />
     </View>
   );
 }
@@ -845,22 +816,37 @@ function createMapOverlay(routeLine: RouteLine | undefined, stations: PdfStation
 }
 
 function createPdfMapProjection(points: GeoPoint[]) {
-  const minLon = Math.min(...points.map((point) => point.lon));
-  const maxLon = Math.max(...points.map((point) => point.lon));
-  const minLat = Math.min(...points.map((point) => point.lat));
-  const maxLat = Math.max(...points.map((point) => point.lat));
-  const lonSpan = maxLon - minLon;
-  const latSpan = maxLat - minLat;
+  // Та же веб-меркаторная геометрия, что у экранной карты. Прежняя линейная
+  // проекция независимо растягивала широту и долготу до рамки, поэтому маршрут
+  // в PDF менял форму и выглядел как декоративная диагональ.
+  const projected = points.map((point) => ({
+    x: (point.lon * Math.PI) / 180,
+    y: Math.log(Math.tan(Math.PI / 4 + (Math.max(-85, Math.min(85, point.lat)) * Math.PI) / 360)),
+  }));
+  const minX = Math.min(...projected.map((point) => point.x));
+  const maxX = Math.max(...projected.map((point) => point.x));
+  const minY = Math.min(...projected.map((point) => point.y));
+  const maxY = Math.max(...projected.map((point) => point.y));
+  const xSpan = Math.max(maxX - minX, 1e-9);
+  const ySpan = Math.max(maxY - minY, 1e-9);
   const innerWidth = PDF_MAP_WIDTH - PDF_MAP_PADDING * 2;
   const innerHeight = PDF_MAP_HEIGHT - PDF_MAP_PADDING * 2;
+  const scale = Math.min(innerWidth / xSpan, innerHeight / ySpan);
+  const drawnWidth = xSpan * scale;
+  const drawnHeight = ySpan * scale;
+  const offsetX = PDF_MAP_PADDING + (innerWidth - drawnWidth) / 2;
+  const offsetY = PDF_MAP_PADDING + (innerHeight - drawnHeight) / 2;
 
-  return (point: GeoPoint): PdfMapPoint => ({
-    x: lonSpan <= 0 ? PDF_MAP_WIDTH / 2 : PDF_MAP_PADDING + ((point.lon - minLon) / lonSpan) * innerWidth,
-    y: latSpan <= 0 ? PDF_MAP_HEIGHT / 2 : PDF_MAP_PADDING + ((maxLat - point.lat) / latSpan) * innerHeight,
-  });
+  return (point: GeoPoint): PdfMapPoint => {
+    const x = (point.lon * Math.PI) / 180;
+    const y = Math.log(Math.tan(Math.PI / 4 + (Math.max(-85, Math.min(85, point.lat)) * Math.PI) / 360));
+    return {
+      x: offsetX + (x - minX) * scale,
+      y: offsetY + (maxY - y) * scale,
+    };
+  };
 }
 
 function formatSvgPoints(points: PdfMapPoint[]) {
   return points.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' ');
 }
-

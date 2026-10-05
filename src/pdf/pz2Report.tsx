@@ -2,6 +2,7 @@ import { Document, Image, Page, Path, StyleSheet, Svg, Text, View, pdf } from '@
 import { downloadTextFile } from '../bridge/io';
 import type { Pz2Result } from '../bridge/schema';
 import { PZ2_ICON_GRID, PZ2_ICON_STROKE, getPz2IconKinds, getPz2WorkIcon } from '../modules/pz2/workIcons';
+import { PZ2_LENGTH_TOLERANCE_KM } from '../modules/pz2/model';
 import { KeyValueTable, PAGE_SIZE, formatDate, formatRequiredValue, styles } from './common';
 
 /**
@@ -45,6 +46,14 @@ const mapStyles = StyleSheet.create({
   legendText: {
     fontSize: 9,
   },
+  workTypeCell: { width: '20%' },
+  workVolumeCell: { width: '15%' },
+  workConditionsCell: { width: '25%' },
+  workStageCell: { width: '40%' },
+  stageTitleCell: { width: '40%' },
+  stageCountCell: { width: '15%' },
+  stageLengthCell: { width: '20%' },
+  stageWorkersCell: { width: '25%' },
 });
 
 export async function downloadPz2Pdf(summary: Pz2PdfSummary, fileName: string): Promise<void> {
@@ -60,6 +69,7 @@ function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
   const { result } = summary;
   const measuredKm = result.measuredLengthKm;
   const difference = measuredKm - summary.routeLengthKm;
+  const lengthMatches = Math.abs(difference) <= PZ2_LENGTH_TOLERANCE_KM;
 
   return (
     <Document
@@ -109,7 +119,7 @@ function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
 
       {/* Работы и этапы — отдельной страницей: под снимком карты на ту же
           страницу помещалась бы только шапка таблицы. */}
-      <Page size={PAGE_SIZE} style={styles.page}>
+      <Page size={PAGE_SIZE} style={styles.page} wrap={false}>
         <Header section="Работы и этапы" summary={summary} />
 
         <Text style={styles.sectionTitle}>2. Работы по трассе</Text>
@@ -120,7 +130,7 @@ function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
             ['Сумма длин работ', `${formatAmount(measuredKm)} км`],
             [
               'Расхождение',
-              `${formatAmount(Math.abs(difference))} км${difference === 0 ? '' : difference < 0 ? ' (недомерено)' : ' (перемерено)'}`,
+              `${formatAmount(Math.abs(difference))} км${lengthMatches ? '' : difference < 0 ? ' (недомерено)' : ' (перемерено)'}`,
             ],
           ]}
         />
@@ -128,23 +138,23 @@ function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
         {result.works.length > 0 ? (
           <View style={styles.table}>
             <View style={styles.tableRow}>
-              <Text style={styles.tableCellLabel}>Тип работы</Text>
-              <Text style={styles.tableCellValue}>Объём</Text>
-              <Text style={styles.tableCellValue}>Условия</Text>
-              <Text style={styles.tableCellValue}>Этап</Text>
+              <Text style={[styles.tableCellLabel, mapStyles.workTypeCell]}>Тип работы</Text>
+              <Text style={[styles.tableCellValue, mapStyles.workVolumeCell]}>Объём</Text>
+              <Text style={[styles.tableCellValue, mapStyles.workConditionsCell]}>Условия</Text>
+              <Text style={[styles.tableCellValue, mapStyles.workStageCell]}>Этап</Text>
             </View>
             {result.works.map((work) => (
               <View key={work.id} style={styles.tableRow}>
-                <Text style={styles.tableCellLabel}>{summary.workKindLabels[work.kind] ?? work.kind}</Text>
-                <Text style={styles.tableCellValue}>
+                <Text style={[styles.tableCellLabel, mapStyles.workTypeCell]}>{summary.workKindLabels[work.kind] ?? work.kind}</Text>
+                <Text style={[styles.tableCellValue, mapStyles.workVolumeCell]}>
                   {work.lengthKm !== null ? `${formatAmount(work.lengthKm)} км` : `${formatAmount(work.count ?? 0)} шт.`}
                 </Text>
-                <Text style={styles.tableCellValue}>
+                <Text style={[styles.tableCellValue, mapStyles.workConditionsCell]}>
                   {work.conditions.length === 0
                     ? 'обычные'
                     : work.conditions.map((condition) => summary.conditionLabels[condition] ?? condition).join(', ')}
                 </Text>
-                <Text style={styles.tableCellValue}>{findStageTitle(result, work.stageId)}</Text>
+                <Text style={[styles.tableCellValue, mapStyles.workStageCell]}>{findStageTitle(result, work.stageId)}</Text>
               </View>
             ))}
           </View>
@@ -156,10 +166,10 @@ function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
         {result.stages.length > 0 ? (
           <View style={styles.table}>
             <View style={styles.tableRow}>
-              <Text style={styles.tableCellLabel}>Этап</Text>
-              <Text style={styles.tableCellValue}>Работ</Text>
-              <Text style={styles.tableCellValue}>Длина, км</Text>
-              <Text style={styles.tableCellValue}>Рабочих</Text>
+              <Text style={[styles.tableCellLabel, mapStyles.stageTitleCell]}>Этап</Text>
+              <Text style={[styles.tableCellValue, mapStyles.stageCountCell]}>Работ</Text>
+              <Text style={[styles.tableCellValue, mapStyles.stageLengthCell]}>Длина, км</Text>
+              <Text style={[styles.tableCellValue, mapStyles.stageWorkersCell]}>Рабочих</Text>
             </View>
             {result.stages.map((stage) => {
               const works = result.works.filter((work) => work.stageId === stage.id);
@@ -167,10 +177,10 @@ function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
 
               return (
                 <View key={stage.id} style={styles.tableRow}>
-                  <Text style={styles.tableCellLabel}>{stage.title}</Text>
-                  <Text style={styles.tableCellValue}>{works.length}</Text>
-                  <Text style={styles.tableCellValue}>{formatAmount(lengthKm)}</Text>
-                  <Text style={styles.tableCellValue}>{result.plan.workersByStage[stage.id] ?? 0}</Text>
+                  <Text style={[styles.tableCellLabel, mapStyles.stageTitleCell]}>{stage.title}</Text>
+                  <Text style={[styles.tableCellValue, mapStyles.stageCountCell]}>{works.length}</Text>
+                  <Text style={[styles.tableCellValue, mapStyles.stageLengthCell]}>{formatAmount(lengthKm)}</Text>
+                  <Text style={[styles.tableCellValue, mapStyles.stageWorkersCell]}>{result.plan.workersByStage[stage.id] ?? 0}</Text>
                 </View>
               );
             })}

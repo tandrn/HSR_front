@@ -16,7 +16,7 @@ import { formatGroupedNumber } from '../shared/lib/numberFormat';
 export const PAGE_SIZE = 'A4';
 export const MARGIN_MM = 20;
 /** Высота запасной схемы карты: снимок настоящей карты вставляется по ширине. */
-export const PDF_MAP_HEIGHT = 282;
+export const PDF_MAP_HEIGHT = 135;
 const runtimeProcess = (globalThis as { process?: { cwd: () => string; versions?: { node?: string } } }).process;
 
 function resolveFontSource(source: string) {
@@ -93,6 +93,14 @@ export const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
     paddingBottom: 6,
+  },
+  runningHeaderPrimary: {
+    paddingRight: 8,
+    width: '64%',
+  },
+  runningHeaderSection: {
+    textAlign: 'right',
+    width: '36%',
   },
   paragraph: {
     marginBottom: 10,
@@ -245,33 +253,19 @@ export const styles = StyleSheet.create({
     padding: 4,
     width: '12%',
   },
-  passengerFlowChartImage: {
-    border: '1 solid #111111',
-    height: 170,
-    objectFit: 'contain',
-    width: '100%',
-  },
   passengerFlowChartFrame: {
-    border: '1 solid #111111',
+    backgroundColor: '#f7f9fc',
+    border: '1 solid #d9e3ef',
+    borderRadius: 6,
     marginBottom: 10,
-    padding: 8,
-  },
-  passengerFlowChartLabels: {
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 8,
-  },
-  passengerFlowChartLabel: {
-    fontFamily: 'RalewayPdf',
-    fontSize: 9,
-    fontWeight: 800,
+    padding: 10,
   },
   passengerFlowLegend: {
     display: 'flex',
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+    gap: 12,
+    justifyContent: 'flex-end',
+    marginBottom: 8,
   },
   passengerFlowLegendItem: {
     alignItems: 'center',
@@ -279,11 +273,49 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     fontSize: 8,
     gap: 3,
-    width: '31%',
+    width: 'auto',
   },
   passengerFlowLegendSwatch: {
     height: 7,
     width: 7,
+  },
+  passengerFlowComparisonRow: {
+    alignItems: 'center',
+    borderTop: '1 solid #e5ebf2',
+    display: 'flex',
+    flexDirection: 'row',
+    minHeight: 31,
+    paddingVertical: 4,
+  },
+  passengerFlowComparisonLabel: {
+    fontFamily: 'RalewayPdf',
+    fontSize: 7.5,
+    fontWeight: 700,
+    paddingRight: 6,
+    width: '29%',
+  },
+  passengerFlowComparisonBars: {
+    gap: 3,
+    width: '48%',
+  },
+  passengerFlowComparisonValues: {
+    color: '#44546a',
+    fontSize: 7,
+    gap: 3,
+    paddingLeft: 7,
+    textAlign: 'right',
+    width: '23%',
+  },
+  passengerFlowBarTrack: {
+    backgroundColor: '#e8eef5',
+    borderRadius: 2,
+    height: 7,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  passengerFlowBarFill: {
+    borderRadius: 2,
+    height: 7,
   },
   formulaBox: {
     alignItems: 'center',
@@ -317,8 +349,9 @@ export const styles = StyleSheet.create({
   },
   mapFrame: {
     alignItems: 'center',
-    backgroundColor: '#eef3ec',
-    border: '1 solid #111111',
+    backgroundColor: '#f2f6f3',
+    border: '1 solid #d5dfd8',
+    borderRadius: 6,
     /* Высота рамки не задана: её задаёт сам снимок, вставленный по ширине.
        Фиксированная высота растягивала бы карту под чужие пропорции —
        ровно то, из-за чего снимок переставал быть похож на карту. */

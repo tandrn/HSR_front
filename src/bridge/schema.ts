@@ -1,3 +1,5 @@
+import type { CriticalPathSubmission } from '../shared/lib/criticalPath';
+
 export type StationLabel = 'А' | 'Б' | 'В' | 'Г';
 export type StationType = 'terminal' | 'intermediate';
 
@@ -227,8 +229,11 @@ export interface Pz2Stage {
 /** Ответ на упражнение «критический путь» (ТЗ ПЗ2 §7.2). */
 export interface Pz2CriticalPathAnswer {
   exerciseId: string;
+  /** Сырой ввод пути; оставлен для файлов ПЗ2, сохранённых до появления таблицы сроков. */
   answer: string;
   correct: boolean;
+  /** Полный ответ на вариант: сроки работ, срок проекта, пути и объяснение. */
+  submission?: CriticalPathSubmission;
 }
 
 /** Ресурсный план: как студент разложил людей и что из этого вышло. */

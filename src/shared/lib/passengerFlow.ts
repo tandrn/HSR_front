@@ -16,13 +16,6 @@ export interface TotalDemandForecastInput {
   gdpPassengerFlowCoefficientRegionA: number;
   gdpPassengerFlowCoefficientRegionB: number;
   inducedDemandPct: number;
-  /**
-   * Сколько поездок приходится на одну корреспонденцию. По умолчанию 1 —
-   * ровно то, что описано в документе заказчика «Расчет модели»: про
-   * направления там не сказано ни слова. ПЗ1 передаёт 2, см.
-   * ROUND_TRIP_MULTIPLIER.
-   */
-  tripsPerJourney?: number;
 }
 
 export interface TotalDemandForecast {
@@ -111,16 +104,11 @@ export function forecastTotalDemand(input: TotalDemandForecastInput): TotalDeman
     (input.populationCurrentRegionA * input.gdpPassengerFlowCoefficientRegionA +
       input.populationCurrentRegionB * input.gdpPassengerFlowCoefficientRegionB) /
     populationCurrentTotal;
-  // Множитель поездок применяется к базовому прогнозу — единственной величине,
-  // из которой выводится всё остальное. Индуцированный спрос считается от него,
-  // распределение по видам тоже, поэтому итог и разбивка растут согласованно и
-  // доли в процентах не меняются.
   const baseForecast =
     input.existingAnnualFlow *
     grpDelta *
     weightedGdpPassengerFlowCoefficient *
-    populationDelta *
-    (input.tripsPerJourney ?? 1);
+    populationDelta;
   const inducedDemand = baseForecast * input.inducedDemandPct;
   const totalForecast = baseForecast + inducedDemand;
 
@@ -179,7 +167,12 @@ export function distributePassengerFlowByMode(
 
     const existingShare =
       input.existingAnnualFlow > EPSILON ? mode.existingAnnualFlow / input.existingAnnualFlow : 0;
-    const directCapture = input.baseForecast * existingShare * (1 - penalty);
+    // Уровень 1 воспроизводим буквально по итоговой модели заказчика:
+    // (существующий поток вида / F_current) * коэффициент удержания.
+    // Это долевая величина; домножения на будущий общий прогноз в документе
+    // нет. Прежняя реализация делала именно такое домножение и тем самым
+    // завышала первый уровень, уменьшая остаток для гравитационной модели.
+    const directCapture = existingShare * passengerFlowRetentionCoefficients[mode.modeId];
     const impedance = calculateImpedance(mode);
     const timeSavingHours = Math.max(0, mode.existingTravelTimeHours - hsrTravelTimeHours);
 

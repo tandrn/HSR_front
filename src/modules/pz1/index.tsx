@@ -46,7 +46,6 @@ import {
   getHsrTravelTimeResult,
   getPz1CorrespondencePassengerFlowForecast,
   getPz1CorrespondenceScenarios,
-  getPz1TaskStepCount,
   pz1StepIds,
   getPz1RegionalCharacteristics,
   getRouteMetrics,
@@ -424,31 +423,45 @@ function TheoryStep() {
   return (
     <div className="theory-layout">
       <section>
-        <p className="eyebrow">Смысл ПЗ1</p>
-        <h2>От паспорта линии к обоснованию</h2>
+        <p className="eyebrow">Технико-экономическое обоснование</p>
+        <h2>От трассы к решению о проекте</h2>
         <p>
-          ПЗ1 собирает трассу, потребительские свойства альтернативных видов транспорта и итоговые показатели, которые
-          позже становятся входом для других практических заданий.
+          ПЗ1 связывает геометрию линии, качество транспортного предложения и ожидаемый спрос. Итоговые показатели
+          показывают, сколько поездов и составов потребуется, во что обойдётся проект и какие риски нужно учитывать.
         </p>
       </section>
-      <div className="theory-grid">
+      <div className="theory-grid theory-grid--four">
         <article>
           <span>01</span>
           <h3>Трасса</h3>
           <p>
-            Станции А, Г и опциональные Б, В ставятся на OpenStreetMap. Линия трассы прокладывается отдельными
-            точками, чтобы обойти водоёмы и возвышенности.
+            Линию проводят по возможности кратко, но с учётом городов, рельефа, водных преград, застройки и охраняемых
+            территорий. Конечные и промежуточные станции определяют корреспонденции пассажиров.
           </p>
         </article>
         <article>
           <span>02</span>
-          <h3>Сравнение</h3>
-          <p>Таблица потребительских свойств хранит исходные значения без расчётов в JSX.</p>
+          <h3>Транспортное предложение</h3>
+          <p>
+            Сравнивайте виды транспорта по полной поездке: подъезд, ожидание, движение и путь до места назначения.
+            На выбор пассажира также влияют цена, частота сообщения и дискомфорт.
+          </p>
         </article>
         <article>
           <span>03</span>
-          <h3>Итог</h3>
-          <p>JSON-мост и PDF фиксируют личный результат студента; черновик между сессиями не сохраняется автоматически.</p>
+          <h3>Пассажиропоток</h3>
+          <p>
+            Прогноз считают отдельно для каждой пары городов. Он учитывает параметры регионов, существующие потоки,
+            свойства всех видов транспорта и индуцированный спрос после запуска новой линии.
+          </p>
+        </article>
+        <article>
+          <span>04</span>
+          <h3>Экономика проекта</h3>
+          <p>
+            Из максимальной густоты потока получают число поездов в сутки, затем оборот и потребный парк. В ТЭО также
+            входят строительство, подвижной состав, билетная выручка, эффекты и риски.
+          </p>
         </article>
       </div>
     </div>
@@ -1493,25 +1506,22 @@ function CorrespondenceModelStep({ pairKey }: { pairKey: string }) {
           </dl>
           <div className="forecast-output-grid">
             <div className="forecast-chart">
-              <ResponsiveContainer height={300} width="100%">
-                <BarChart data={chartData} margin={{ bottom: 8, left: 10, right: 10, top: 18 }}>
-                  <CartesianGrid stroke="#e4edfa" vertical={false} />
-                  <XAxis dataKey="name" />
-                  <YAxis tickFormatter={(value) => formatCompactPassengerFlowValue(Number(value))} />
+              <ResponsiveContainer height={360} width="100%">
+                <BarChart
+                  data={chartData}
+                  layout="vertical"
+                  margin={{ bottom: 8, left: 18, right: 28, top: 18 }}
+                >
+                  <CartesianGrid horizontal={false} stroke="#e4edfa" />
+                  <XAxis
+                    tickFormatter={(value) => formatCompactPassengerFlowValue(Number(value))}
+                    type="number"
+                  />
+                  <YAxis dataKey="name" type="category" width={148} />
                   <Tooltip />
                   <Legend />
-                  {/* ВСМ рисуем последней: recharts складывает столбец снизу
-                      вверх, и линия, ради которой всё считается, должна быть
-                      верхней плашкой, а не теряться в основании. */}
-                  {sortHsrLast(getActiveTransportColumns(draft, pairKey)).map((column) => (
-                    <Bar
-                      dataKey={column.id}
-                      fill={passengerFlowChartColors[column.id]}
-                      key={column.id}
-                      name={column.label}
-                      stackId="flow"
-                    />
-                  ))}
+                  <Bar dataKey="existing" fill="#9aa8bb" name="Существующий поток" radius={[0, 5, 5, 0]} />
+                  <Bar dataKey="forecast" fill="#0aa596" name="Прогноз" radius={[0, 5, 5, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -1619,7 +1629,7 @@ function FinalIndicatorsStep() {
 }
 
 function ResultStep() {
-  const { draft, setCurrentStepIndex, setPhase } = useModuleState<Pz1Draft>();
+  const { draft } = useModuleState<Pz1Draft>();
   const [exportStatus, setExportStatus] = useState('');
   const bridge = createPz1Bridge(draft);
   const result = createPz1Result(draft);
@@ -1632,11 +1642,6 @@ function ResultStep() {
   const totalLengthText = formatKm(result.totalLengthKm);
   const stationRouteDistances = getStationRouteDistances(draft);
 
-  function returnToFinalIndicators() {
-    setCurrentStepIndex(Math.max(0, getPz1TaskStepCount(draft) - 1));
-    setPhase('task');
-  }
-
   function downloadJson() {
     jsonFileDraftStorage.save(bridge, `${fileSlug}-bridge.json`);
     setExportStatus('✓ Файл сохранён');
@@ -1645,9 +1650,6 @@ function ResultStep() {
   async function downloadPdf() {
     try {
       const { downloadPz1Pdf } = await import('../../pdf/render');
-      const passengerFlowChartImage = result.passengerFlowForecast
-        ? createPassengerFlowChartImage(result.passengerFlowForecast)
-        : undefined;
       await downloadPz1Pdf(
         {
           team: draft.passport.team,
@@ -1667,7 +1669,6 @@ function ResultStep() {
           hsrTravelTime: result.hsrTravelTime,
           notes: result.notes,
           passengerFlowForecast: result.passengerFlowForecast,
-          passengerFlowChartImage,
           regionalCharacteristics: result.regionalCharacteristics,
           routeLine: result.routeLine,
           stationRouteDistances,
@@ -1721,9 +1722,6 @@ function ResultStep() {
         <p className="eyebrow">Экспорт</p>
         <h2>Скачать файлы</h2>
         <p className="status-note">PDF нужен для сдачи преподавателю. JSON можно загрузить позже, чтобы продолжить работу с теми же данными.</p>
-        <button className="button button--outline" onClick={returnToFinalIndicators} type="button">
-          ← Назад к показателям
-        </button>
         <button className="button button--primary" onClick={() => void downloadPdf()} type="button">
           Скачать PDF
         </button>
@@ -2087,155 +2085,15 @@ function groupMissingFields(missingFields: string[]) {
   return [...groups].map(([step, fields]) => ({ step, fields }));
 }
 
-/** ВСМ — в конец списка, чтобы в столбце с накоплением она легла сверху. */
-function sortHsrLast<T extends { id: TransportModeId }>(columns: T[]) {
-  return [...columns].sort((left, right) => Number(left.id === 'hSR') - Number(right.id === 'hSR'));
-}
-
-const passengerFlowChartColors: Record<TransportModeId, string> = {
-  hSR: '#e0182d',
-  airplane: '#003d84',
-  bus: '#08a696',
-  suburbanTrain: '#7b61ff',
-  longDistanceTrain: '#f59e0b',
-  car: '#475569',
-};
-
 function buildPassengerFlowChartData(forecast: Pz1PassengerFlowResult) {
-  return [
-    buildPassengerFlowChartRow('Существующий поток', (modeId) => {
-      const mode = forecast.modes.find((item) => item.modeId === modeId);
-      return mode?.existingAnnualFlow ?? 0;
-    }),
-    buildPassengerFlowChartRow('Прогноз', (modeId) => {
-      const mode = forecast.modes.find((item) => item.modeId === modeId);
-      return mode?.forecastAnnualFlow ?? 0;
-    }),
-  ];
-}
-
-function buildPassengerFlowChartRow(label: string, getValue: (modeId: TransportModeId) => number) {
-  const row = { name: label } as Record<string, string | number>;
-
-  for (const column of transportColumns) {
-    row[column.id] = getValue(column.id);
-  }
-
-  return row;
-}
-
-const CHART_LEGEND_TEXT_X = 726;
-const CHART_LEGEND_FONT = '600 14px Raleway, Arial, sans-serif';
-
-function createPassengerFlowChartImage(forecast: Pz1PassengerFlowResult) {
-  const canvas = document.createElement('canvas');
-  const pixelRatio = window.devicePixelRatio || 1;
-  const height = 360;
-
-  const context = canvas.getContext('2d');
-  if (!context) {
-    return undefined;
-  }
-
-  // Ширину подбираем под самую длинную подпись легенды, а не берём круглым
-  // числом: «Поезд дальнего следования» не влезал в прежние 920 px и
-  // обрезался по правому краю картинки в PDF.
-  context.font = CHART_LEGEND_FONT;
-  const widestLabel = Math.max(
-    ...transportColumns.map((column) => context.measureText(column.label).width),
-  );
-  const width = Math.ceil(Math.max(920, CHART_LEGEND_TEXT_X + widestLabel + 24));
-
-  canvas.width = width * pixelRatio;
-  canvas.height = height * pixelRatio;
-
-  context.scale(pixelRatio, pixelRatio);
-  context.fillStyle = '#ffffff';
-  context.fillRect(0, 0, width, height);
-  context.fillStyle = '#003d84';
-  context.font = '800 22px Raleway, Arial, sans-serif';
-  context.fillText('Существующий поток и прогноз', 32, 38);
-
-  const plotX = 88;
-  const plotY = 62;
-  const plotWidth = 560;
-  const plotHeight = 220;
-  const barWidth = 92;
-  const barXs = [230, 430];
-  const barGroups = [
-    {
-      label: 'Существующий поток',
-      values: transportColumns.map((column) =>
-        getPassengerFlowModeValue(forecast, column.id, 'existingAnnualFlow'),
-      ),
-    },
-    {
-      label: 'Прогноз',
-      values: transportColumns.map((column) =>
-        getPassengerFlowModeValue(forecast, column.id, 'forecastAnnualFlow'),
-      ),
-    },
-  ];
-  const maxTotal = Math.max(
-    1,
-    ...barGroups.map((group) => group.values.reduce((sum, value) => sum + value, 0)),
-  );
-
-  context.strokeStyle = '#e4edfa';
-  context.lineWidth = 1;
-  context.beginPath();
-  for (let index = 0; index <= 4; index += 1) {
-    const y = plotY + (plotHeight / 4) * index;
-    context.moveTo(plotX, y);
-    context.lineTo(plotX + plotWidth, y);
-  }
-  context.stroke();
-
-  context.strokeStyle = '#8b87a0';
-  context.beginPath();
-  context.moveTo(plotX, plotY);
-  context.lineTo(plotX, plotY + plotHeight);
-  context.lineTo(plotX + plotWidth, plotY + plotHeight);
-  context.stroke();
-
-  barGroups.forEach((group, groupIndex) => {
-    let offset = 0;
-
-    group.values.forEach((value, modeIndex) => {
-      const column = transportColumns[modeIndex];
-      const segmentHeight = (value / maxTotal) * plotHeight;
-      const x = barXs[groupIndex];
-      const y = plotY + plotHeight - offset - segmentHeight;
-      context.fillStyle = passengerFlowChartColors[column.id];
-      context.fillRect(x, y, barWidth, Math.max(segmentHeight, value > 0 ? 1 : 0));
-      offset += segmentHeight;
-    });
-
-    context.fillStyle = '#232323';
-    context.font = '700 15px Raleway, Arial, sans-serif';
-    context.textAlign = 'center';
-    context.fillText(group.label, barXs[groupIndex] + barWidth / 2, plotY + plotHeight + 30);
+  return transportColumns.map((column) => {
+    const mode = forecast.modes.find((item) => item.modeId === column.id);
+    return {
+      name: column.label,
+      existing: mode?.existingAnnualFlow ?? 0,
+      forecast: mode?.forecastAnnualFlow ?? 0,
+    };
   });
-
-  context.textAlign = 'left';
-  context.font = CHART_LEGEND_FONT;
-  transportColumns.forEach((column, index) => {
-    const y = 84 + index * 36;
-    context.fillStyle = passengerFlowChartColors[column.id];
-    context.fillRect(700, y - 12, 16, 16);
-    context.fillStyle = '#232323';
-    context.fillText(column.label, CHART_LEGEND_TEXT_X, y + 1);
-  });
-
-  return canvas.toDataURL('image/png');
-}
-
-function getPassengerFlowModeValue(
-  forecast: Pz1PassengerFlowResult,
-  modeId: TransportModeId,
-  field: 'existingAnnualFlow' | 'forecastAnnualFlow',
-) {
-  return forecast.modes.find((mode) => mode.modeId === modeId)?.[field] ?? 0;
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { Pz1Station, RouteLine } from '../../bridge/schema';
+import type { CriticalPathSubmission } from '../../shared/lib/criticalPath';
 
 /** Что студент размещает на трассе. Список закрыт заказчиком на встрече 02.09. */
 export type Pz2WorkKind =
@@ -54,8 +55,8 @@ export interface Pz2StageDraft {
 export interface Pz2Draft {
   works: Pz2WorkDraft[];
   stages: Pz2StageDraft[];
-  /** Ответы на упражнения про критический путь: id упражнения → ответ студента. */
-  criticalPathAnswers: Record<string, string>;
+  /** Ответы на упражнения про критический путь: id упражнения → заполненная форма. */
+  criticalPathAnswers: Record<string, CriticalPathSubmission>;
   /** Упражнение на выравнивание: id работы → сдвиг в днях. Пусто — не начато. */
   levelingShifts?: Record<string, number>;
   /** Сколько рабочих есть на проект. Откуда берётся число — вопрос в-7. */
