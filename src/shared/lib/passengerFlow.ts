@@ -101,8 +101,8 @@ export function forecastTotalDemand(input: TotalDemandForecastInput): TotalDeman
   const grpDelta = (grpFutureRegionA + grpFutureRegionB) / grpCurrentTotal;
   const populationDelta = (populationFutureRegionA + populationFutureRegionB) / populationCurrentTotal;
   const weightedGdpPassengerFlowCoefficient =
-    (input.populationCurrentRegionA * input.gdpPassengerFlowCoefficientRegionA +
-      input.populationCurrentRegionB * input.gdpPassengerFlowCoefficientRegionB) /
+    (input.populationCurrentRegionA * (input.gdpPassengerFlowCoefficientRegionA/100) +
+      input.populationCurrentRegionB * (input.gdpPassengerFlowCoefficientRegionB/100)) /
     populationCurrentTotal;
   const baseForecast =
     input.existingAnnualFlow *
