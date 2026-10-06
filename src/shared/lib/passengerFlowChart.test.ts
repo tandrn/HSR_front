@@ -19,8 +19,13 @@ describe('passenger flow stacked chart', () => {
 
     expect(data.map((row) => row.period)).toEqual(['Существующие', 'Прогноз']);
     expect(passengerFlowChartModes.map((mode) => mode.id)).toEqual([
-      'hSR', 'airplane', 'bus', 'suburbanTrain', 'longDistanceTrain', 'car',
+      'hSR', 'airplane', 'longDistanceTrain', 'bus', 'suburbanTrain', 'car',
     ]);
+    expect(passengerFlowChartModes.find((mode) => mode.id === 'hSR')?.color).toBe('#D64545');
+    expect(Math.abs(
+      passengerFlowChartModes.findIndex((mode) => mode.id === 'longDistanceTrain') -
+      passengerFlowChartModes.findIndex((mode) => mode.id === 'suburbanTrain'),
+    )).toBeGreaterThan(1);
     expect(passengerFlowChartModes.reduce((sum, mode) => sum + Number(data[0][mode.id]), 0)).toBe(1000);
     expect(passengerFlowChartModes.reduce((sum, mode) => sum + Number(data[1][mode.id]), 0)).toBe(1200);
     expect(data[0].hSR).toBe(0);
