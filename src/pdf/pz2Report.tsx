@@ -109,7 +109,7 @@ function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
 
         <Text style={styles.sectionTitle}>1. Трасса на карте</Text>
         <Text style={styles.paragraph}>
-          Трасса и станции — из ПЗ1; цветом показаны этапы, значками — сооружения, которые студент отмерил линейкой.
+          Трасса и станции — из ПЗ1; цветом показаны этапы, значками — мосты, тоннели, эстакады и стрелочные переводы.
           Снимок сделан с той же карты и в той же проекции, что на экране, поэтому километраж на карте и в таблицах
           ниже — один и тот же.
         </Text>
@@ -271,8 +271,10 @@ function MapPreview({ previewImage }: { previewImage?: string }) {
 function WorkIconLegend({ result }: { result: Pz2Result }) {
   const items = getPz2IconKinds().flatMap((kind) => {
     const icon = getPz2WorkIcon(kind);
-    // На карте отмечены только работы с участком: значок ставится по нему.
-    const count = result.works.filter((work) => work.kind === kind && work.span).length;
+    // Линейные сооружения считаются по строкам, а переводы — штуками.
+    const count = result.works
+      .filter((work) => work.kind === kind)
+      .reduce((sum, work) => sum + (kind === 'turnout' ? work.count ?? 0 : 1), 0);
 
     return icon && count > 0 ? [{ kind, icon, count }] : [];
   });
@@ -290,7 +292,7 @@ function WorkIconLegend({ result }: { result: Pz2Result }) {
               <Path
                 d={definition}
                 key={definition}
-                stroke="#0F6E56"
+                stroke={item.icon.color}
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 strokeWidth={PZ2_ICON_STROKE}

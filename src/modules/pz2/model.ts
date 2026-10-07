@@ -133,6 +133,7 @@ export function createInitialPz2Draft(importedBridge?: BridgeSchema | null): Pz2
       conditions: work.conditions,
       stageId: work.stageId,
       ...(work.span ? { span: work.span } : {}),
+      ...(Number.isFinite(work.positionKm) ? { positionKm: work.positionKm } : {}),
     })),
     stages: saved.stages.map((stage) => ({ id: stage.id, title: stage.title, order: stage.order })),
     criticalPathAnswers: Object.fromEntries(saved.criticalPath.map((answer) => [answer.exerciseId, restoreCriticalPathAnswer(answer)])),
@@ -281,10 +282,36 @@ export function findPz2OverlappingWorks(draft: Pz2Draft): string[] {
  * ошибкой «укажите количество», хотя студент ничего не стирал. Намеренную
  * длину при этом не трогаем: вернёт тип обратно — вернётся и длина.
  */
-export function changePz2WorkKind(object: Pz2WorkDraft, kind: Pz2WorkKind): Pz2WorkDraft {
+export function changePz2WorkKind(
+  object: Pz2WorkDraft,
+  kind: Pz2WorkKind,
+  routeKm = 0,
+  initialPositionKm = routeKm / 2,
+): Pz2WorkDraft {
   const needsCount = getPz2WorkKind(kind).measure === 'count';
 
-  return { ...object, kind, count: needsCount && !object.count.trim() ? '1' : object.count };
+  return {
+    ...object,
+    kind,
+    count: needsCount && !object.count.trim() ? '1' : object.count,
+    ...(getPz2WorkIcon(kind) && (kind === 'turnout' || !object.span) && !Number.isFinite(object.positionKm)
+      ? { positionKm: Math.max(0, Math.min(routeKm, initialPositionKm)) }
+      : {}),
+  };
+}
+
+/** Первые значки разводим по трассе, чтобы новые объекты не закрывали друг друга. */
+export function getPz2DefaultWorkPosition(index: number, routeKm: number): number {
+  return routeKm * ((index % 4) + 1) / 5;
+}
+
+/** Перетаскивание переводит координату маркера в километраж и удерживает его на трассе. */
+export function setPz2WorkPosition(work: Pz2WorkDraft, distanceKm: number, routeKm: number): Pz2WorkDraft {
+  if (!getPz2WorkIcon(work.kind) || (work.kind !== 'turnout' && work.span) || !Number.isFinite(distanceKm)) {
+    return work;
+  }
+
+  return { ...work, positionKm: Math.max(0, Math.min(routeKm, distanceKm)) };
 }
 
 /**
@@ -522,16 +549,44 @@ export function getPz2SegmentMarks(source: Pz2RouteSource): Pz2SegmentMark[] {
  * сооружение с участком трассы, и без значка она одна из трёх выпадала из
  * карты. Если заказчик решит иначе — убирается строкой из словаря значков.
  *
- * Отмечаются только работы, у которых есть намеренный линейкой участок: без
- * него неизвестно, где на трассе стоит сооружение, а ставить значок «примерно»
- * значит врать про километраж.
+ * У измеренных сооружений значок ставится посередине участка. У ручной строки
+ * он появляется на трассе и остаётся подвижным, пока студент не задаст место.
  */
-export function getPz2WorkMarks(draft: Pz2Draft): Pz2WorkMark[] {
-  return draft.works.flatMap((work) => {
+export function getPz2WorkMarks(draft: Pz2Draft, routeKm = 0): Pz2WorkMark[] {
+  return draft.works.flatMap<Pz2WorkMark>((work, index) => {
     const icon = getPz2WorkIcon(work.kind);
 
-    if (!icon || !work.span) {
+    if (!icon) {
       return [];
+    }
+
+    if (work.kind === 'turnout') {
+      const count = parsePz2Number(work.count) ?? 0;
+      const distanceKm = Number.isFinite(work.positionKm) ? work.positionKm! : getPz2DefaultWorkPosition(index, routeKm);
+
+      return [{
+        id: work.id,
+        kind: work.kind,
+        label: icon.label,
+        title: `Стрелочный перевод 1/25: ${count} шт. — ${formatPz2Km(distanceKm)} от начала трассы`,
+        distanceKm,
+        count,
+        draggable: true,
+      }];
+    }
+
+    if (!work.span) {
+      const distanceKm = Number.isFinite(work.positionKm) ? work.positionKm! : getPz2DefaultWorkPosition(index, routeKm);
+      const lengthKm = parsePz2Number(work.lengthKm);
+
+      return [{
+        id: work.id,
+        kind: work.kind,
+        label: icon.label,
+        title: `${getPz2WorkKind(work.kind).label}${lengthKm !== null ? `: ${formatPz2Km(lengthKm)}` : ''} — ${formatPz2Km(distanceKm)} от начала трассы`,
+        distanceKm,
+        draggable: true,
+      }];
     }
 
     const from = Math.min(work.span.fromKm, work.span.toKm);
@@ -735,6 +790,7 @@ export function createPz2Result(draft: Pz2Draft, routeLengthKm: number): Pz2Resu
         stageId: work.stageId,
         conditions: work.conditions,
         ...(work.span ? { span: work.span } : {}),
+        ...(Number.isFinite(work.positionKm) ? { positionKm: work.positionKm } : {}),
       };
     }),
     stages: draft.stages.map((stage): Pz2Stage => ({ id: stage.id, title: stage.title, order: stage.order })),

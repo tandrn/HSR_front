@@ -44,7 +44,7 @@ export function StagesStep() {
   const stations = useMemo(() => getPz2StationMarks(source, ruler), [source, ruler]);
   const routePoints = useMemo(() => getPz2RoutePointMarks(source, ruler), [source, ruler]);
   const segments = useMemo(() => getPz2SegmentMarks(source), [source]);
-  const workMarks = useMemo(() => getPz2WorkMarks(draft), [draft]);
+  const workMarks = useMemo(() => getPz2WorkMarks(draft, ruler.totalKm), [draft.works, ruler.totalKm]);
   const stageSpans = useMemo(() => getPz2StageSpans(draft), [draft]);
   const [hoveredStageId, setHoveredStageId] = useState('');
   const [title, setTitle] = useState('');
@@ -389,4 +389,3 @@ function describeWorks(works: Pz2WorkDraft[]) {
 
   return `${works.length} ${pluralWorks(works.length)} · ${formatPz2Km(lengthKm)}`;
 }
-

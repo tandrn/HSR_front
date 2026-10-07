@@ -21,6 +21,7 @@ import {
   readPz2Position,
   removePz2Stage,
   setPz2WorkLength,
+  setPz2WorkPosition,
   createPz2Work,
   getPz2LengthCheck,
   getPz2RouteSource,
@@ -350,11 +351,14 @@ describe('мост ПЗ2', () => {
   });
 
   it('у штучной работы в мост уходит количество, а не длина', () => {
-    const draft = { ...createInitialPz2Draft(), works: [{ ...createPz2Work('turnout'), count: '4' }] };
-    const result = createPz2Bridge(draft, null).completed.pz2;
+    const draft = { ...createInitialPz2Draft(), works: [{ ...createPz2Work('turnout'), count: '4', positionKm: 72.5 }] };
+    const bridge = createPz2Bridge(draft, null);
+    const result = bridge.completed.pz2;
 
     expect(result?.works[0].count).toBe(4);
     expect(result?.works[0].lengthKm).toBeNull();
+    expect(result?.works[0].positionKm).toBe(72.5);
+    expect(createInitialPz2Draft(bridge).works[0].positionKm).toBe(72.5);
   });
 
   it('сохраняет все поля упражнения и читает прежний файл с одним ответом-путём', () => {
@@ -637,17 +641,51 @@ describe('значки сооружений на карте', () => {
     expect(marks.map((mark) => mark.label)).toEqual(['мост', 'тоннель', 'эстакада']);
   });
 
+  it('стрелочный перевод появляется при выборе типа и показывает количество под значком', () => {
+    const work = changePz2WorkKind(createPz2Work(), 'turnout', 200);
+    const marks = getPz2WorkMarks(draftWith([{ ...work, count: '7' }]), 200);
+
+    expect(work.positionKm).toBe(100);
+    expect(marks).toMatchObject([{ kind: 'turnout', count: 7, distanceKm: 100 }]);
+    expect(marks[0].title).toContain('7 шт.');
+  });
+
+  it('перетаскивание сохраняет километр и не выпускает перевод за конец трассы', () => {
+    const work = changePz2WorkKind(createPz2Work(), 'turnout', 200);
+    const moved = setPz2WorkPosition(work, 72.5, 200);
+
+    expect(moved.positionKm).toBe(72.5);
+    expect(getPz2WorkMarks(draftWith([moved]), 200)[0].distanceKm).toBe(72.5);
+    expect(setPz2WorkPosition(work, 300, 200).positionKm).toBe(200);
+  });
+
+  it('ручные тоннель и эстакада тоже получают перемещаемые значки', () => {
+    const tunnel = changePz2WorkKind(createPz2Work(), 'tunnel', 200);
+    const viaduct = changePz2WorkKind(createPz2Work(), 'viaduct', 200);
+    const marks = getPz2WorkMarks(draftWith([tunnel, viaduct]), 200);
+
+    expect(marks.map((mark) => [mark.kind, mark.draggable])).toEqual([
+      ['tunnel', true],
+      ['viaduct', true],
+    ]);
+    expect(setPz2WorkPosition(viaduct, 75, 200).positionKm).toBe(75);
+  });
+
   it('у каждого значка есть контуры — иначе маркер будет пустым кружком', () => {
     for (const kind of getPz2IconKinds()) {
       const icon = getPz2WorkIcon(kind);
 
       expect(icon?.label).toBeTruthy();
       expect(icon?.paths.length).toBeGreaterThan(0);
+      expect(icon?.color).toMatch(/^#[0-9A-F]{6}$/i);
     }
+    expect(new Set(getPz2IconKinds().map((kind) => getPz2WorkIcon(kind)?.color)).size).toBe(4);
   });
 
-  it('работа без участка на карте не показывается — где она, неизвестно', () => {
-    expect(getPz2WorkMarks(draftWith([lengthObject('bridge', '12')]))).toEqual([]);
+  it('у ручного сооружения значок есть, но его можно переставить в точное место', () => {
+    expect(getPz2WorkMarks(draftWith([lengthObject('bridge', '12')]), 100)).toMatchObject([
+      { kind: 'bridge', distanceKm: 20, draggable: true },
+    ]);
   });
 
   it('участок, намеренный в обратную сторону, даёт ту же середину', () => {

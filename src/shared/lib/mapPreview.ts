@@ -326,17 +326,17 @@ export function drawPreviewBadge(
 export function drawPreviewIcon(
   context: CanvasRenderingContext2D,
   point: PreviewPoint,
-  options: { paths: string[]; gridSize: number; strokeWidth: number; radius: number; color: string },
+  options: { paths: string[]; gridSize: number; strokeWidth: number; radius: number; color: string; countLabel?: string },
 ) {
   drawPreviewDisc(context, point, options.radius, options.color);
 
   // Значок вписывается в квадрат, вписанный в кружок, — иначе контуры лезут
   // на белую обводку.
-  const iconSize = options.radius * 1.45;
+  const iconSize = options.radius * (options.countLabel ? 1.05 : 1.45);
   const scale = iconSize / options.gridSize;
 
   context.save();
-  context.translate(point.x - iconSize / 2, point.y - iconSize / 2);
+  context.translate(point.x - iconSize / 2, point.y - iconSize / 2 - (options.countLabel ? 4 : 0));
   context.scale(scale, scale);
   context.strokeStyle = '#ffffff';
   context.lineWidth = options.strokeWidth;
@@ -348,6 +348,16 @@ export function drawPreviewIcon(
   }
 
   context.restore();
+
+  if (options.countLabel) {
+    context.save();
+    context.fillStyle = '#ffffff';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.font = 'bold 9px sans-serif';
+    context.fillText(options.countLabel, point.x, point.y + options.radius * 0.56);
+    context.restore();
+  }
 }
 
 /** Плотность пикселей: только конечное положительное число имеет смысл. */

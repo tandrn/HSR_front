@@ -33,9 +33,8 @@ import type {
  */
 const ROUTE_COLOR = '#e0182d';
 const SPAN_COLOR = '#08a696';
-/** Станция — синяя, как в ПЗ1; сооружение — тёмно-бирюзовое, как маркер на карте. */
+/** Станция — синяя, как в ПЗ1; цвета работ хранятся рядом с их значками. */
 const STATION_COLOR = '#003d84';
-const WORK_COLOR = '#0f6e56';
 
 /** Значки маркеров рисуются как SVG-узлы, а те живут в своём пространстве имён. */
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
@@ -77,8 +76,10 @@ interface Pz2RouteMapProps {
   routePoints: Pz2RoutePointMark[];
   /** Прямые вставки и кривые из ПЗ1 — справочно, менять их здесь нельзя. */
   segments: Pz2SegmentMark[];
-  /** Сооружения на трассе — мосты, тоннели, эстакады — с их значками. */
+  /** Объекты на трассе с их значками. */
   workMarks?: Pz2WorkMark[];
+  /** Перестановка объекта без намеренного участка вдоль трассы. */
+  onWorkPositionChange?: (workId: string, distanceKm: number) => void;
   /**
    * Куски трассы по этапам — раскраска для экрана 02. Линейка там не нужна:
    * трасса уже размечена, этот экран только распределяет работы.
@@ -124,6 +125,7 @@ export function Pz2RouteMap({
   onMarksChange,
   onMeasured,
   onPreviewImageChange,
+  onWorkPositionChange,
 }: Pz2RouteMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -132,6 +134,7 @@ export function Pz2RouteMap({
   const marksRef = useRef(marksKm);
   const onMarksChangeRef = useRef(onMarksChange);
   const onMeasuredRef = useRef(onMeasured);
+  const onWorkPositionChangeRef = useRef(onWorkPositionChange);
   const onPreviewImageChangeRef = useRef(onPreviewImageChange);
   const previewOptionsRef = useRef<PreviewOptions>({ paint: () => undefined });
   const previewTimerRef = useRef<number | null>(null);
@@ -161,6 +164,7 @@ export function Pz2RouteMap({
     marksRef.current = marksKm;
     onMarksChangeRef.current = onMarksChange;
     onMeasuredRef.current = onMeasured;
+    onWorkPositionChangeRef.current = onWorkPositionChange;
     onPreviewImageChangeRef.current = onPreviewImageChange;
     // Снимок делается отложенно, уже после этого рендера: что рисовать и что
     // обязано попасть в кадр, берётся из ссылки — чтобы снялось то, что на
@@ -345,7 +349,7 @@ export function Pz2RouteMap({
     setGeoJson(map, STAGE_SOURCE_ID, stageFeatures(ruler, stageSpans, highlightedStageId));
     syncMarkPointRef.current?.();
     capturePreview(map);
-  }, [highlightedSpan, highlightedStageId, isMapReady, marksKm, ruler, stageSpans]);
+  }, [highlightedSpan, highlightedStageId, isMapReady, marksKm, ruler, stageSpans, workMarks]);
 
   useEffect(() => {
     // Esc → «Просмотр»: та же механика, что в ПЗ1 (ТЗ v3.5 §3 П-04), ТЗ ПЗ2 §5.1
@@ -384,7 +388,7 @@ export function Pz2RouteMap({
       ...workMarks.flatMap((mark) => {
         const point = pointAtDistance(ruler, mark.distanceKm);
 
-        return point ? [createWorkMarker(map, [point.lon, point.lat], mark)] : [];
+        return point ? [createWorkMarker(map, [point.lon, point.lat], mark, onWorkPositionChangeRef, rulerRef)] : [];
       }),
       ...stations.map((station) =>
         createMarker(
@@ -497,12 +501,10 @@ export function Pz2RouteMap({
 
       {workLegend.length > 0 ? (
         <ul className="route-works-legend">
-          {/* Значок на трассе ничего не значит без расшифровки: три сооружения
-              похожи силуэтом, и на общем виде маршрута их легко перепутать. */}
-          <li className="route-works-legend__caption">Сооружения на трассе:</li>
+          <li className="route-works-legend__caption">Объекты на трассе:</li>
           {workLegend.map((item) => (
             <li key={item.kind}>
-              <span className="route-works-legend__icon">
+              <span className="route-works-legend__icon" style={{ backgroundColor: getPz2WorkIcon(item.kind)?.color }}>
                 <WorkIconGlyph kind={item.kind} />
               </span>
               <span>{item.label}</span>
@@ -541,6 +543,9 @@ export function Pz2RouteMap({
         {!withRuler || mode === 'view' ? null : marksKm.length === 1
           ? 'Начало участка поставлено. Кликните второй раз — длина посчитается вдоль трассы и подставится в таблицу.'
           : 'Кликните на трассе, чтобы отметить начало участка, затем ещё раз — чтобы отметить конец. Рядом со станцией, точкой трассы или её концом отметка садится ровно на них.'}
+        {withRuler && workMarks.some((mark) => mark.draggable)
+          ? ' Значок объекта без отмеренного участка можно перетащить в нужное место трассы.'
+          : null}
       </p>
     </section>
   );
@@ -625,11 +630,23 @@ function createMarker(map: MapLibreMap, lngLat: [number, number], modifier: stri
  * а сокращать его до буквы значит заводить второй язык подписей. Значок
  * читается сразу, а полное название с километражом остаётся в подсказке.
  */
-function createWorkMarker(map: MapLibreMap, lngLat: [number, number], mark: Pz2WorkMark) {
+function createWorkMarker(
+  map: MapLibreMap,
+  lngLat: [number, number],
+  mark: Pz2WorkMark,
+  onPositionChangeRef: { current?: (workId: string, distanceKm: number) => void },
+  rulerRef: { current: RouteRuler },
+) {
   const icon = getPz2WorkIcon(mark.kind);
   const element = document.createElement('span');
-  element.className = 'maplibre-marker maplibre-marker--work';
+  const draggable = Boolean(mark.draggable && onPositionChangeRef.current);
+  element.className = `maplibre-marker maplibre-marker--work${mark.kind === 'turnout' ? ' maplibre-marker--turnout' : ''}${draggable ? ' is-draggable' : ''}`;
   element.title = mark.title;
+  element.setAttribute('aria-label', mark.title);
+
+  if (icon) {
+    element.style.backgroundColor = icon.color;
+  }
 
   if (icon) {
     const svg = document.createElementNS(SVG_NAMESPACE, 'svg');
@@ -646,7 +663,36 @@ function createWorkMarker(map: MapLibreMap, lngLat: [number, number], mark: Pz2W
     element.append(svg);
   }
 
-  return new maplibregl.Marker({ element }).setLngLat(lngLat).addTo(map);
+  if (mark.kind === 'turnout') {
+    const count = document.createElement('span');
+    count.className = 'maplibre-marker__count';
+    count.textContent = String(mark.count ?? 0);
+    element.append(count);
+  }
+
+  const marker = new maplibregl.Marker({ element, draggable }).setLngLat(lngLat).addTo(map);
+
+  if (draggable) {
+    marker.on('dragend', () => {
+      const position = marker.getLngLat();
+      const projected = projectOntoRoute(rulerRef.current, { lat: position.lat, lon: position.lng });
+
+      if (!projected) {
+        marker.setLngLat(lngLat);
+        return;
+      }
+
+      const snapped = pointAtDistance(rulerRef.current, projected.distanceKm);
+
+      if (snapped) {
+        marker.setLngLat([snapped.lon, snapped.lat]);
+      }
+
+      onPositionChangeRef.current?.(mark.id, projected.distanceKm);
+    });
+  }
+
+  return marker;
 }
 
 /**
@@ -705,8 +751,9 @@ function createPreviewOptions({
         paths: icon.paths,
         gridSize: PZ2_ICON_GRID,
         strokeWidth: PZ2_ICON_STROKE,
-        radius: 11,
-        color: WORK_COLOR,
+        radius: mark.kind === 'turnout' ? 14 : 11,
+        color: icon.color,
+        ...(mark.kind === 'turnout' ? { countLabel: String(mark.count ?? 0) } : {}),
       });
     }
 
@@ -731,9 +778,9 @@ function getWorkLegend(workMarks: Pz2WorkMark[]) {
     const item = counts.get(mark.kind);
 
     if (item) {
-      item.count += 1;
+      item.count += mark.count ?? 1;
     } else {
-      counts.set(mark.kind, { kind: mark.kind, label: mark.label, count: 1 });
+      counts.set(mark.kind, { kind: mark.kind, label: mark.label, count: mark.count ?? 1 });
     }
   }
 

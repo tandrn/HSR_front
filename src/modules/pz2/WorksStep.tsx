@@ -10,12 +10,14 @@ import {
   createPz2Work,
   formatPz2Km,
   getPz2LengthCheck,
+  getPz2DefaultWorkPosition,
   getPz2RouteSource,
   getPz2RoutePointMarks,
   getPz2SegmentMarks,
   getPz2StationMarks,
   getPz2WorkMarks,
   setPz2WorkLength,
+  setPz2WorkPosition,
   togglePz2SoilCondition,
   getPz2WorkKind,
   pz2SoilConditions,
@@ -43,7 +45,7 @@ export function WorksStep() {
   const stations = useMemo(() => getPz2StationMarks(source, ruler), [source, ruler]);
   const routePoints = useMemo(() => getPz2RoutePointMarks(source, ruler), [source, ruler]);
   const segments = useMemo(() => getPz2SegmentMarks(source), [source]);
-  const workMarks = useMemo(() => getPz2WorkMarks(draft), [draft]);
+  const workMarks = useMemo(() => getPz2WorkMarks(draft, ruler.totalKm), [draft.works, ruler.totalKm]);
   const [highlightedId, setHighlightedId] = useState('');
   const overlapping = new Set(findPz2OverlappingWorks(draft));
   const highlighted = draft.works.find((object) => object.id === highlightedId)?.span ?? null;
@@ -73,8 +75,10 @@ export function WorksStep() {
   function changeKind(id: string, kind: Pz2WorkKind) {
     updateDraft((current) => ({
       ...current,
-      works: current.works.map((object) =>
-        object.id === id ? changePz2WorkKind(object, kind) : object,
+      works: current.works.map((object, index) =>
+        object.id === id
+          ? changePz2WorkKind(object, kind, ruler.totalKm, getPz2DefaultWorkPosition(index, ruler.totalKm))
+          : object,
       ),
     }));
   }
@@ -108,6 +112,12 @@ export function WorksStep() {
         segments={segments}
         stations={stations}
         workMarks={workMarks}
+        onWorkPositionChange={(id, distanceKm) => updateDraft((current) => ({
+          ...current,
+          works: current.works.map((work) =>
+            work.id === id ? setPz2WorkPosition(work, distanceKm, ruler.totalKm) : work,
+          ),
+        }))}
       />
 
       <section className="form-section">

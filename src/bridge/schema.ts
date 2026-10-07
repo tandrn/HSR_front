@@ -206,6 +206,8 @@ export interface Pz2Work {
   conditions: Pz2SoilCondition[];
   /** Где работа стоит на трассе, км от начала. Есть только у намеренных линейкой. */
   span?: { fromKm: number; toKm: number };
+  /** Положение объекта без намеренного участка на трассе, км от начала. */
+  positionKm?: number;
 }
 
 export type Pz2WorkKind =
