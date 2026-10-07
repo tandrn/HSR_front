@@ -70,7 +70,6 @@ function CriticalPathExercises() {
     <section className="form-section critical-path">
       <div className="osm-map-card__head">
         <div>
-          <p className="eyebrow">Упражнение Артёма Глебовича</p>
           <h3>Поиск критического пути</h3>
         </div>
         <span className="critical-path__counter">Решено {solved} из {pz2NetworkExercises.length}</span>
