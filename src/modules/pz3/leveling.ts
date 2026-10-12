@@ -7,7 +7,7 @@ import { initialScenario } from '../../domain/network/mockData';
 import type { WorkItem } from '../../domain/network/types';
 
 /**
- * Упражнение на выравнивание загрузки (ТЗ ПЗ2 §7.1, упражнение Ольги
+ * Упражнение на выравнивание загрузки (ТЗ ПЗ3 §7.1, упражнение Ольги
  * Владимировны).
  *
  * Смысл упражнения — тот, что заказчик записал на доске критерием качества
@@ -24,9 +24,9 @@ import type { WorkItem } from '../../domain/network/types';
  */
 
 /** Сколько человек в бригаде: больше этого числа в день занять нельзя. */
-export const PZ2_LEVELING_LIMIT = initialScenario.resourceLimit;
+export const PZ3_LEVELING_LIMIT = initialScenario.resourceLimit;
 
-export interface Pz2LevelingRow {
+export interface Pz3LevelingRow {
   id: string;
   code: string;
   title: string;
@@ -43,16 +43,16 @@ export interface Pz2LevelingRow {
   isCritical: boolean;
 }
 
-export interface Pz2LevelingDay {
+export interface Pz3LevelingDay {
   day: number;
   workers: number;
   overloaded: boolean;
 }
 
-export interface Pz2LevelingState {
+export interface Pz3LevelingState {
   limit: number;
-  rows: Pz2LevelingRow[];
-  load: Pz2LevelingDay[];
+  rows: Pz3LevelingRow[];
+  load: Pz3LevelingDay[];
   peakWorkers: number;
   overloadDays: number;
   durationDays: number;
@@ -69,20 +69,20 @@ export interface Pz2LevelingState {
  * относительно неё, и ползунок не должен менять свой предел от того, что
  * подвинули соседа.
  */
-export function getPz2Leveling(shifts: Record<string, number>): Pz2LevelingState {
+export function getPz3Leveling(shifts: Record<string, number>): Pz3LevelingState {
   const baseline = calculateSchedule(initialScenario.works);
   const shifted = initialScenario.works.map(
     (work): WorkItem => ({ ...work, plannedShift: Math.max(0, Math.round(shifts[work.id] ?? 0)) }),
   );
   const schedule = calculateSchedule(shifted);
-  const metrics = getProjectMetrics(schedule.items, PZ2_LEVELING_LIMIT);
-  const load = calculateResourceUsage(schedule.items, PZ2_LEVELING_LIMIT).map((point) => ({
+  const metrics = getProjectMetrics(schedule.items, PZ3_LEVELING_LIMIT);
+  const load = calculateResourceUsage(schedule.items, PZ3_LEVELING_LIMIT).map((point) => ({
     day: point.day,
     workers: point.workers,
     overloaded: point.overloaded,
   }));
 
-  const rows = baseline.items.map((base): Pz2LevelingRow => {
+  const rows = baseline.items.map((base): Pz3LevelingRow => {
     const current = schedule.items.find((item) => item.id === base.id) ?? base;
 
     return {
@@ -100,7 +100,7 @@ export function getPz2Leveling(shifts: Record<string, number>): Pz2LevelingState
   });
 
   return {
-    limit: PZ2_LEVELING_LIMIT,
+    limit: PZ3_LEVELING_LIMIT,
     rows,
     load,
     peakWorkers: metrics.maxWorkers,
@@ -112,6 +112,6 @@ export function getPz2Leveling(shifts: Record<string, number>): Pz2LevelingState
 }
 
 /** Сдвиги, с которых упражнение начинается: работы стоят по ранним срокам. */
-export function getPz2LevelingReset(): Record<string, number> {
+export function getPz3LevelingReset(): Record<string, number> {
   return {};
 }

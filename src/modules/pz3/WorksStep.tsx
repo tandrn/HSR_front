@@ -2,56 +2,57 @@ import { useMemo, useState } from 'react';
 import { useModuleState } from '../../bridge/context';
 import { useTouchedFields } from '../../shared/hooks/useTouchedFields';
 import { GroupedNumberInput } from '../../shared/ui/GroupedNumberInput';
-import { Pz2RouteMap } from './lazyRouteMap';
+import { Pz3RouteMap } from './lazyRouteMap';
+import { getPz3OptionsForKind } from './options';
 import {
-  changePz2WorkKind,
-  createPz2Ruler,
-  findPz2OverlappingWorks,
-  createPz2Work,
-  formatPz2Km,
-  getPz2LengthCheck,
-  getPz2DefaultWorkPosition,
-  getPz2RouteSource,
-  getPz2RoutePointMarks,
-  getPz2SegmentMarks,
-  getPz2StationMarks,
-  getPz2WorkMarks,
-  setPz2WorkLength,
-  setPz2WorkPosition,
-  togglePz2SoilCondition,
-  getPz2WorkKind,
-  pz2SoilConditions,
-  pz2WorkKinds,
-  validatePz2Work,
+  changePz3WorkKind,
+  createPz3Ruler,
+  findPz3OverlappingWorks,
+  createPz3Work,
+  formatPz3Km,
+  getPz3LengthCheck,
+  getPz3DefaultWorkPosition,
+  getPz3RouteSource,
+  getPz3RoutePointMarks,
+  getPz3SegmentMarks,
+  getPz3StationMarks,
+  getPz3WorkMarks,
+  setPz3WorkLength,
+  setPz3WorkPosition,
+  togglePz3SoilCondition,
+  getPz3WorkKind,
+  pz3SoilConditions,
+  pz3WorkKinds,
+  validatePz3Work,
 } from './model';
-import type { Pz2Draft, Pz2RouteSpan, Pz2SoilCondition, Pz2WorkDraft, Pz2WorkKind } from './types';
+import type { Pz3Draft, Pz3RouteSpan, Pz3SoilCondition, Pz3WorkDraft, Pz3WorkKind } from './types';
 
 /**
- * Шаг 01 ПЗ2: какие работы нужно выполнить на трассе (ТЗ ПЗ2 §5).
+ * Шаг 01 ПЗ3: какие работы нужно выполнить на трассе (ТЗ ПЗ3 §5).
  *
- * Слева карта из ПЗ1 с линейкой, справа таблица работ. Измеренный участок
- * сразу заводится строкой в таблицу — так студенту не приходится переписывать
+ * Рядом с картой из ПЗ1 — карточки работ. Измеренный участок
+ * сразу заводится карточкой — так студенту не приходится переписывать
  * число руками, а сумма длин сходится с длиной маршрута.
  */
 export function WorksStep() {
-  const { draft, importedBridge, updateDraft } = useModuleState<Pz2Draft>();
+  const { draft, importedBridge, updateDraft } = useModuleState<Pz3Draft>();
   const { markTouched, shouldShowError } = useTouchedFields();
   // Трасса из ПЗ1 не меняется, пока не загрузят другой файл, а километраж
   // станций и точек считается по всей её геометрии. Без этого замера каждый
   // введённый символ пересобирал линейку заново и заодно перезапускал эффекты
   // карты: на шести строках ввод отставал примерно на 40 мс на нажатие.
-  const source = useMemo(() => getPz2RouteSource(importedBridge), [importedBridge]);
-  const ruler = useMemo(() => createPz2Ruler(source), [source]);
-  const stations = useMemo(() => getPz2StationMarks(source, ruler), [source, ruler]);
-  const routePoints = useMemo(() => getPz2RoutePointMarks(source, ruler), [source, ruler]);
-  const segments = useMemo(() => getPz2SegmentMarks(source), [source]);
-  const workMarks = useMemo(() => getPz2WorkMarks(draft, ruler.totalKm), [draft.works, ruler.totalKm]);
+  const source = useMemo(() => getPz3RouteSource(importedBridge), [importedBridge]);
+  const ruler = useMemo(() => createPz3Ruler(source), [source]);
+  const stations = useMemo(() => getPz3StationMarks(source, ruler), [source, ruler]);
+  const routePoints = useMemo(() => getPz3RoutePointMarks(source, ruler), [source, ruler]);
+  const segments = useMemo(() => getPz3SegmentMarks(source), [source]);
+  const workMarks = useMemo(() => getPz3WorkMarks(draft, ruler.totalKm), [draft.works, ruler.totalKm]);
   const [highlightedId, setHighlightedId] = useState('');
-  const overlapping = new Set(findPz2OverlappingWorks(draft));
+  const overlapping = new Set(findPz3OverlappingWorks(draft));
   const highlighted = draft.works.find((object) => object.id === highlightedId)?.span ?? null;
-  const check = getPz2LengthCheck(draft, source.totalLengthKm || ruler.totalKm);
+  const check = getPz3LengthCheck(draft, source.totalLengthKm || ruler.totalKm);
 
-  function patchObject(id: string, patch: Partial<Pz2WorkDraft>) {
+  function patchObject(id: string, patch: Partial<Pz3WorkDraft>) {
     updateDraft((current) => ({
       ...current,
       works: current.works.map((object) => (object.id === id ? { ...object, ...patch } : object)),
@@ -61,32 +62,32 @@ export function WorksStep() {
   function setLength(id: string, lengthKm: string) {
     updateDraft((current) => ({
       ...current,
-      works: current.works.map((work) => (work.id === id ? setPz2WorkLength(work, lengthKm) : work)),
+      works: current.works.map((work) => (work.id === id ? setPz3WorkLength(work, lengthKm) : work)),
     }));
   }
 
-  function toggleCondition(id: string, condition: Pz2SoilCondition) {
+  function toggleCondition(id: string, condition: Pz3SoilCondition) {
     updateDraft((current) => ({
       ...current,
-      works: current.works.map((work) => (work.id === id ? togglePz2SoilCondition(work, condition) : work)),
+      works: current.works.map((work) => (work.id === id ? togglePz3SoilCondition(work, condition) : work)),
     }));
   }
 
-  function changeKind(id: string, kind: Pz2WorkKind) {
+  function changeKind(id: string, kind: Pz3WorkKind) {
     updateDraft((current) => ({
       ...current,
       works: current.works.map((object, index) =>
         object.id === id
-          ? changePz2WorkKind(object, kind, ruler.totalKm, getPz2DefaultWorkPosition(index, ruler.totalKm))
+          ? changePz3WorkKind(object, kind, ruler.totalKm, getPz3DefaultWorkPosition(index, ruler.totalKm))
           : object,
       ),
     }));
   }
 
-  function addObject(lengthKm = '', span?: Pz2RouteSpan) {
+  function addObject(lengthKm = '', span?: Pz3RouteSpan) {
     updateDraft((current) => ({
       ...current,
-      works: [...current.works, createPz2Work('existingLineRepair', lengthKm, span)],
+      works: [...current.works, createPz3Work('existingLineRepair', lengthKm, span)],
     }));
   }
 
@@ -99,7 +100,7 @@ export function WorksStep() {
 
   return (
     <div className="works-step">
-      <Pz2RouteMap
+      <Pz3RouteMap
         marksKm={draft.rulerMarksKm}
         onMarksChange={(rulerMarksKm) => updateDraft((current) => ({ ...current, rulerMarksKm }))}
         highlightedSpan={highlighted}
@@ -115,7 +116,7 @@ export function WorksStep() {
         onWorkPositionChange={(id, distanceKm) => updateDraft((current) => ({
           ...current,
           works: current.works.map((work) =>
-            work.id === id ? setPz2WorkPosition(work, distanceKm, ruler.totalKm) : work,
+            work.id === id ? setPz3WorkPosition(work, distanceKm, ruler.totalKm) : work,
           ),
         }))}
       />
@@ -136,25 +137,16 @@ export function WorksStep() {
             Пока пусто. Измерьте участок линейкой на карте — строка добавится сама, либо добавьте работу вручную.
           </p>
         ) : (
-          <div className="table-scroll">
-            <table className="input-table works-table">
-              <thead>
-                <tr>
-                  <th>Тип работы</th>
-                  <th className="numeric">Длина, км</th>
-                  <th className="numeric">Количество, шт.</th>
-                  <th>Условия</th>
-                  <th aria-label="Удалить" />
-                </tr>
-              </thead>
-              <tbody>
+          <div className="works-list">
                 {draft.works.map((object, index) => {
-                  const kind = getPz2WorkKind(object.kind);
+                  const kind = getPz3WorkKind(object.kind);
+                  const options = getPz3OptionsForKind(object.kind);
+                  const legacyOptions = pz3SoilConditions.filter((item) => object.conditions.includes(item.id));
                   const value = kind.measure === 'count' ? object.count : object.lengthKm;
-                  const error = shouldShowError(object.id, value) ? validatePz2Work(object) : null;
+                  const error = shouldShowError(object.id, value) ? validatePz3Work(object) : null;
 
                   return (
-                    <tr
+                    <div
                       className={overlapping.has(object.id) ? 'is-overlapping' : undefined}
                       key={object.id}
                       onBlur={() => setHighlightedId('')}
@@ -162,47 +154,59 @@ export function WorksStep() {
                       onMouseEnter={() => setHighlightedId(object.id)}
                       onMouseLeave={() => setHighlightedId('')}
                     >
-                      <th scope="row">
-                        <select
+                      <div className="works-list__header">
+                        <div className="works-list__title">
+                          <span className="works-list__number">Работа {index + 1}</span>
+                          <select
                           aria-label={`Тип работы ${index + 1}`}
-                          onChange={(event) => changeKind(object.id, event.target.value as Pz2WorkKind)}
+                          onChange={(event) => changeKind(object.id, event.target.value as Pz3WorkKind)}
                           value={object.kind}
                         >
-                          {pz2WorkKinds.map((item) => (
+                          {pz3WorkKinds.map((item) => (
                             <option key={item.id} value={item.id}>
                               {item.label}
                             </option>
                           ))}
-                        </select>
-                        <small>{kind.hint}</small>
-                      </th>
-                      <td>
-                        <GroupedNumberInput
-                          ariaLabel={`Длина работы ${index + 1}, км`}
-                          error={kind.measure === 'length' ? error : null}
-                          onBlur={() => markTouched(object.id)}
-                          onChange={(lengthKm) => setLength(object.id, lengthKm)}
-                          readOnly={kind.measure === 'count'}
-                          value={kind.measure === 'count' ? '' : object.lengthKm}
-                        />
-                        {kind.measure === 'length' && error ? <small className="field-error">{error}</small> : null}
-                      </td>
-                      <td>
-                        <GroupedNumberInput
-                          ariaLabel={`Количество для работы ${index + 1}, шт.`}
-                          error={kind.measure === 'count' ? error : null}
-                          onBlur={() => markTouched(object.id)}
-                          onChange={(count) => patchObject(object.id, { count })}
-                          readOnly={kind.measure === 'length'}
-                          value={kind.measure === 'length' ? '' : object.count}
-                        />
-                        {kind.measure === 'count' && error ? <small className="field-error">{error}</small> : null}
-                      </td>
-                      <td>
-                        {/* Условия не исключают друг друга: участок может быть
-                            и в слабых грунтах, и в скальных породах. */}
+                          </select>
+                          <small>{kind.hint}</small>
+                        </div>
+                        <button
+                          aria-label={`Удалить работу ${index + 1}`}
+                          className="data-entry__remove-column"
+                          onClick={() => removeObject(object.id)}
+                          type="button"
+                        >
+                          ×
+                        </button>
+                      </div>
+                      <div className="works-list__field">
+                        <span>{kind.measure === 'count' ? 'Количество, шт.' : 'Длина, км'}</span>
+                        {kind.measure === 'count' ? (
+                          <GroupedNumberInput
+                            ariaLabel={`Количество для работы ${index + 1}, шт.`}
+                            error={error}
+                            onBlur={() => markTouched(object.id)}
+                            onChange={(count) => patchObject(object.id, { count })}
+                            value={object.count}
+                          />
+                        ) : (
+                          <GroupedNumberInput
+                            ariaLabel={`Длина работы ${index + 1}, км`}
+                            error={error}
+                            onBlur={() => markTouched(object.id)}
+                            onChange={(lengthKm) => setLength(object.id, lengthKm)}
+                            value={object.lengthKm}
+                          />
+                        )}
+                        {error ? <small className="field-error">{error}</small> : null}
+                      </div>
+                      <div className="works-list__options">
+                        <span>Условия работы</span>
                         <ul className="soil-conditions">
-                          {pz2SoilConditions.map((item) => (
+                          {[
+                            ...options.map((option) => ({ ...option, hint: option.detail })),
+                            ...legacyOptions.map((item) => ({ ...item, detail: '', effect: undefined })),
+                          ].map((item) => (
                             <li key={item.id}>
                               <label title={item.hint}>
                                 <input
@@ -212,25 +216,16 @@ export function WorksStep() {
                                 />
                                 <span>{item.label}</span>
                               </label>
+                              {object.conditions.includes(item.id) && item.detail ? (
+                                <small>{item.detail}</small>
+                              ) : null}
                             </li>
                           ))}
                         </ul>
-                      </td>
-                      <td>
-                        <button
-                          aria-label={`Удалить работу ${index + 1}`}
-                          className="data-entry__remove-column"
-                          onClick={() => removeObject(object.id)}
-                          type="button"
-                        >
-                          ×
-                        </button>
-                      </td>
-                    </tr>
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
           </div>
         )}
       </section>
@@ -241,18 +236,18 @@ export function WorksStep() {
         <dl className="forecast-summary-grid forecast-summary-grid--compact">
           <div>
             <dt>Намерено</dt>
-            <dd>{formatPz2Km(check.measuredKm)}</dd>
+            <dd>{formatPz3Km(check.measuredKm)}</dd>
           </div>
           <div>
             <dt>Маршрут из ПЗ1</dt>
-            <dd>{formatPz2Km(check.routeKm)}</dd>
+            <dd>{formatPz3Km(check.routeKm)}</dd>
           </div>
           <div>
             <dt>Расхождение</dt>
             {/* Красным только само число расхождения: это ожидаемая часть
                 работы, а не ошибка ввода, и ругать экраном за неё нельзя. */}
             <dd className={check.status === 'match' ? 'is-matched' : 'is-off'}>
-              {formatPz2Km(Math.abs(check.differenceKm))}
+              {formatPz3Km(Math.abs(check.differenceKm))}
             </dd>
           </div>
         </dl>
@@ -268,7 +263,7 @@ export function WorksStep() {
   );
 }
 
-function describeCheck(status: ReturnType<typeof getPz2LengthCheck>['status']) {
+function describeCheck(status: ReturnType<typeof getPz3LengthCheck>['status']) {
   if (status === 'empty') {
     return 'Добавьте работы — тогда сумму будет с чем сверять.';
   }

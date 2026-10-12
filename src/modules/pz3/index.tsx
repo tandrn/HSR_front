@@ -7,38 +7,38 @@ import { ExercisesStep } from './ExercisesStep';
 import { PlanStep } from './PlanStep';
 import { StagesStep } from './StagesStep';
 import { WorksStep } from './WorksStep';
+import { getPz3OptionLabel } from './options';
 import {
-  createInitialPz2Draft,
-  createPz2Bridge,
-  formatPz2Km,
-  getPz2LengthCheck,
-  getPz2ExercisesProgress,
-  getPz2RouteSource,
-  getPz2SegmentMarks,
-  getPz2StageWorks,
-  isPz2PlanComplete,
-  isPz2ExercisesComplete,
-  isPz2StagesComplete,
-  isPz2WorksComplete,
-  pz2SoilConditions,
-  pz2StepIds,
-  pz2WorkKinds,
-  readPz2Position,
+  createInitialPz3Draft,
+  createPz3Bridge,
+  formatPz3Km,
+  getPz3LengthCheck,
+  getPz3ExercisesProgress,
+  getPz3RouteSource,
+  getPz3SegmentMarks,
+  getPz3StageWorks,
+  isPz3PlanComplete,
+  isPz3ExercisesComplete,
+  isPz3StagesComplete,
+  isPz3WorksComplete,
+  pz3StepIds,
+  pz3WorkKinds,
+  readPz3Position,
 } from './model';
-import { getPz2Plan, getPz2Report } from './plan';
-import type { Pz2Draft } from './types';
+import { getPz3Plan, getPz3Report } from './plan';
+import type { Pz3Draft } from './types';
 
-export function Pz2Module() {
+export function Pz3Module() {
   return (
-    <ModuleStateProvider<Pz2Draft> initialDraft={createInitialPz2Draft()}>
-      <Pz2Workspace />
+    <ModuleStateProvider<Pz3Draft> initialDraft={createInitialPz3Draft()}>
+      <Pz3Workspace />
     </ModuleStateProvider>
   );
 }
 
-function Pz2Workspace() {
-  const { currentStepIndex, draft, importedBridge, phase, theorySeen } = useModuleState<Pz2Draft>();
-  const source = getPz2RouteSource(importedBridge);
+function Pz3Workspace() {
+  const { currentStepIndex, draft, importedBridge, phase, theorySeen } = useModuleState<Pz3Draft>();
+  const source = getPz3RouteSource(importedBridge);
 
   const taskSteps: ModuleTaskStep[] = [
     {
@@ -47,7 +47,7 @@ function Pz2Workspace() {
       goal:
         'Пройдите линейкой по трассе и перечислите работы, которые нужно выполнить: их тип, длину и условия грунта. Сумма длин должна сойтись с длиной маршрута.',
       content: <WorksStep />,
-      isComplete: isPz2WorksComplete(draft),
+      isComplete: isPz3WorksComplete(draft),
       completionHint: 'Добавьте хотя бы одну работу и заполните её длину или количество',
     },
     {
@@ -56,7 +56,7 @@ function Pz2Workspace() {
       goal:
         'Разделите трассу на участки, которые строятся параллельно, и разнесите работы по ним: перетащите карточку работы в этап.',
       content: <StagesStep />,
-      isComplete: isPz2StagesComplete(draft),
+      isComplete: isPz3StagesComplete(draft),
       completionHint: describeStagesHint(draft),
     },
     {
@@ -65,7 +65,7 @@ function Pz2Workspace() {
       goal:
         'Определите критический путь по сетевой диаграмме и разберитесь, как резервы работ позволяют выровнять число занятых людей во времени.',
       content: <ExercisesStep />,
-      isComplete: isPz2ExercisesComplete(draft),
+      isComplete: isPz3ExercisesComplete(draft),
       completionHint: describeExercisesHint(draft),
     },
     {
@@ -74,56 +74,56 @@ function Pz2Workspace() {
       goal:
         'Распределите рабочих по этапам так, чтобы потребность в людях была ровной: этапы строятся параллельно, и от раскладки зависят и срок, и загрузка.',
       content: <PlanStep />,
-      isComplete: isPz2PlanComplete(draft),
+      isComplete: isPz3PlanComplete(draft),
       completionHint: 'Укажите общее число рабочих и назначьте людей на каждый этап',
     },
   ];
 
   return (
     <ModuleShell
-      intro={<Pz2IntroStep />}
+      intro={<Pz3IntroStep />}
       introComplete={source.routeLine !== null}
       introCompletionHint="Загрузите файл, сохранённый в ПЗ1, — из него берутся трасса и длина маршрута"
       onSaveDraft={() =>
         jsonFileDraftStorage.save(
           // Позиция пишется стабильным id шага — как в ПЗ1: файл, сохранённый
           // до перестановки шагов, откроет тот же экран, а не тот же номер.
-          createPz2Bridge(draft, importedBridge, {
+          createPz3Bridge(draft, importedBridge, {
             phase,
-            stepId: pz2StepIds[currentStepIndex],
+            stepId: pz3StepIds[currentStepIndex],
             theorySeen,
           }),
-          'vsm-pz2-bridge.json',
+          'vsm-pz3-bridge.json',
         )
       }
-      result={<Pz2ResultStep />}
-      subtitle="Практическое задание № 2"
+      result={<Pz3ResultStep />}
+      subtitle="Практическое задание № 3"
       taskSteps={taskSteps}
-      theory={<Pz2TheoryStep />}
+      theory={<Pz3TheoryStep />}
       title="Календарно-сетевой график строительства"
     />
   );
 }
 
 /** Сколько сегментов перенеслось и сколько из них кривые — видно сразу на интро. */
-function describeSegments(segments: ReturnType<typeof getPz2SegmentMarks>) {
+function describeSegments(segments: ReturnType<typeof getPz3SegmentMarks>) {
   const curves = segments.filter((segment) => segment.radiusM !== null).length;
 
   return curves > 0 ? `${segments.length}, из них кривых ${curves}` : String(segments.length);
 }
 
-function describeStagesHint(draft: Pz2Draft) {
+function describeStagesHint(draft: Pz3Draft) {
   if (draft.stages.length === 0) {
     return 'Создайте хотя бы один этап';
   }
 
-  const left = getPz2StageWorks(draft, null).length;
+  const left = getPz3StageWorks(draft, null).length;
 
   return left > 0 ? `В пуле осталось работ: ${left}` : 'Добавьте работы на предыдущем шаге';
 }
 
-function describeExercisesHint(draft: Pz2Draft) {
-  const progress = getPz2ExercisesProgress(draft);
+function describeExercisesHint(draft: Pz3Draft) {
+  const progress = getPz3ExercisesProgress(draft);
 
   if (progress.solvedCriticalPath < progress.totalCriticalPath) {
     return `Решите все варианты критического пути: ${progress.solvedCriticalPath} из ${progress.totalCriticalPath}`;
@@ -134,12 +134,12 @@ function describeExercisesHint(draft: Pz2Draft) {
     : 'Выровняйте загрузку: дней с нехваткой должно остаться 0';
 }
 
-function Pz2IntroStep() {
+function Pz3IntroStep() {
   const { importedBridge, replaceDraft, setCurrentStepIndex, setImportedBridge, setTheorySeen } =
-    useModuleState<Pz2Draft>();
+    useModuleState<Pz3Draft>();
   const [importError, setImportError] = useState('');
   const [importStatus, setImportStatus] = useState('');
-  const source = getPz2RouteSource(importedBridge);
+  const source = getPz3RouteSource(importedBridge);
 
   async function importBridgeFile(file: File) {
     try {
@@ -153,12 +153,12 @@ function Pz2IntroStep() {
       }
 
       setImportedBridge(bridge);
-      // Возвращаем и данные, и место, на котором студент сохранился: файл ПЗ2
+      // Возвращаем и данные, и место, на котором студент сохранился: файл ПЗ3
       // открывает тот же экран с уже введёнными работами и этапами.
-      replaceDraft(createInitialPz2Draft(bridge));
+      replaceDraft(createInitialPz3Draft(bridge));
       setImportError('');
 
-      const position = readPz2Position(bridge);
+      const position = readPz3Position(bridge);
 
       if (position) {
         // Фазу не переключаем — студент остаётся на интро и возвращается в
@@ -166,7 +166,7 @@ function Pz2IntroStep() {
         setTheorySeen(position.theorySeen);
         setCurrentStepIndex(position.stepIndex);
         setImportStatus(
-          `Загружен файл: ${file.name}. «Начать» вернёт на шаг ${position.stepIndex + 1} из ${pz2StepIds.length}.`,
+          `Загружен файл: ${file.name}. «Начать» вернёт на шаг ${position.stepIndex + 1} из ${pz3StepIds.length}.`,
         );
         return;
       }
@@ -184,7 +184,7 @@ function Pz2IntroStep() {
         <p className="eyebrow">Исходные данные</p>
         <h2>Трасса из первого задания</h2>
         <p>
-          Второе задание продолжает первое: работы считаются по той линии ВСМ, которую вы уже проложили. Загрузите файл,
+          Третье задание использует трассу из первого: работы считаются по той линии ВСМ, которую вы уже проложили. Загрузите файл,
           сохранённый в ПЗ1, — из него берутся сама трасса и длина маршрута.
         </p>
         <label
@@ -223,7 +223,7 @@ function Pz2IntroStep() {
           <dl className="forecast-summary-grid forecast-summary-grid--compact">
             <div>
               <dt>Длина маршрута</dt>
-              <dd>{formatPz2Km(source.totalLengthKm)}</dd>
+              <dd>{formatPz3Km(source.totalLengthKm)}</dd>
             </div>
             <div>
               <dt>Станций</dt>
@@ -235,7 +235,7 @@ function Pz2IntroStep() {
             </div>
             <div>
               <dt>Сегментов</dt>
-              <dd>{describeSegments(getPz2SegmentMarks(source))}</dd>
+              <dd>{describeSegments(getPz3SegmentMarks(source))}</dd>
             </div>
           </dl>
         ) : (
@@ -246,7 +246,7 @@ function Pz2IntroStep() {
   );
 }
 
-function Pz2TheoryStep() {
+function Pz3TheoryStep() {
   return (
     <div className="theory-layout">
       <section>
@@ -297,17 +297,17 @@ function Pz2TheoryStep() {
 }
 
 /**
- * Отчёт по проекту (ТЗ ПЗ2 §9): материалы, человеко-часы, машино-часы.
+ * Отчёт по проекту (ТЗ ПЗ3 §9): материалы, человеко-часы, машино-часы.
  *
  * Считается по тем же нормативам, что и сроки на экране 04, поэтому цифры
- * отчёта и графика сходятся между собой. Черновой характер нормативов сказан
- * прямо: заказчик разрешил их сгенерировать и передал на проверку эксперту.
+ * отчёта и графика сходятся между собой. Статус нормативов хранится в данных,
+ * но не выводится студенту как служебная оговорка на экране результата.
  */
-function Pz2ReportSection() {
-  const { draft, importedBridge } = useModuleState<Pz2Draft>();
-  const source = getPz2RouteSource(importedBridge);
-  const report = getPz2Report(draft);
-  const plan = getPz2Plan(
+function Pz3ReportSection() {
+  const { draft, importedBridge } = useModuleState<Pz3Draft>();
+  const source = getPz3RouteSource(importedBridge);
+  const report = getPz3Report(draft);
+  const plan = getPz3Plan(
     draft,
     draft.stages.map((stage) => ({
       stageId: stage.id,
@@ -348,7 +348,7 @@ function Pz2ReportSection() {
         </div>
         <div>
           <dt>Длина маршрута</dt>
-          <dd>{formatPz2Km(source.totalLengthKm)}</dd>
+          <dd>{formatPz3Km(source.totalLengthKm)}</dd>
         </div>
       </dl>
 
@@ -357,15 +357,11 @@ function Pz2ReportSection() {
         <ReportTable caption="Машины" rows={report.machines} />
       </div>
 
-      <p className="status-note">
-        Нормативы расхода — черновые. Заказчик разрешил сгенерировать их, чтобы не задерживать работу (ТЗ §9), и передал
-        на проверку эксперту: числа поменяются, способ расчёта — нет.
-      </p>
     </section>
   );
 }
 
-function ReportTable({ caption, rows }: { caption: string; rows: ReturnType<typeof getPz2Report>['materials'] }) {
+function ReportTable({ caption, rows }: { caption: string; rows: ReturnType<typeof getPz3Report>['materials'] }) {
   if (rows.length === 0) {
     return null;
   }
@@ -402,21 +398,21 @@ function formatAmount(value: number) {
   return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value);
 }
 
-function Pz2ResultStep() {
-  const { draft, importedBridge } = useModuleState<Pz2Draft>();
+function Pz3ResultStep() {
+  const { draft, importedBridge } = useModuleState<Pz3Draft>();
   const [exportStatus, setExportStatus] = useState('');
-  const source = getPz2RouteSource(importedBridge);
-  const check = getPz2LengthCheck(draft, source.totalLengthKm);
-  const inPool = getPz2StageWorks(draft, null).length;
+  const source = getPz3RouteSource(importedBridge);
+  const check = getPz3LengthCheck(draft, source.totalLengthKm);
+  const inPool = getPz3StageWorks(draft, null).length;
 
   async function downloadPdf() {
     try {
       // Отчёт грузится по требованию: библиотека PDF весит больше самого
       // модуля, и тянуть её ради экрана, до которого дошли не все, незачем.
-      const { downloadPz2Pdf } = await import('../../pdf/pz2Report');
-      const bridge = createPz2Bridge(draft, importedBridge);
+      const { downloadPz3Pdf } = await import('../../pdf/pz3Report');
+      const bridge = createPz3Bridge(draft, importedBridge);
 
-      await downloadPz2Pdf(
+      await downloadPz3Pdf(
         {
           team: bridge.passport.team,
           lineTitle: bridge.passport.lineTitle,
@@ -424,11 +420,13 @@ function Pz2ResultStep() {
           runId: bridge.passport.runId,
           routeLengthKm: source.totalLengthKm,
           previewImage: draft.previewImage,
-          result: bridge.completed.pz2!,
-          workKindLabels: Object.fromEntries(pz2WorkKinds.map((kind) => [kind.id, kind.label])),
-          conditionLabels: Object.fromEntries(pz2SoilConditions.map((item) => [item.id, item.label])),
+          result: bridge.completed.pz3!,
+          workKindLabels: Object.fromEntries(pz3WorkKinds.map((kind) => [kind.id, kind.label])),
+          conditionLabels: Object.fromEntries(
+            bridge.completed.pz3!.works.flatMap((work) => work.conditions.map((id) => [id, getPz3OptionLabel(id, work.kind)])),
+          ),
         },
-        'vsm-pz2-report.pdf',
+        'vsm-pz3-report.pdf',
       );
       setExportStatus('✓ Файл сохранён');
     } catch {
@@ -437,7 +435,7 @@ function Pz2ResultStep() {
   }
 
   function downloadJson() {
-    jsonFileDraftStorage.save(createPz2Bridge(draft, importedBridge), 'vsm-pz2-bridge.json');
+    jsonFileDraftStorage.save(createPz3Bridge(draft, importedBridge), 'vsm-pz3-bridge.json');
     setExportStatus('✓ Файл сохранён');
   }
 
@@ -451,11 +449,11 @@ function Pz2ResultStep() {
           <dl className="forecast-summary-grid forecast-summary-grid--compact">
             <div>
               <dt>Намерено</dt>
-              <dd>{formatPz2Km(check.measuredKm)}</dd>
+              <dd>{formatPz3Km(check.measuredKm)}</dd>
             </div>
             <div>
               <dt>Маршрут из ПЗ1</dt>
-              <dd>{formatPz2Km(check.routeKm)}</dd>
+              <dd>{formatPz3Km(check.routeKm)}</dd>
             </div>
             <div>
               <dt>Этапов</dt>
@@ -466,7 +464,7 @@ function Pz2ResultStep() {
           {draft.stages.length > 0 ? (
             <ul className="stage-list">
               {draft.stages.map((stage) => {
-                const works = getPz2StageWorks(draft, stage.id);
+                const works = getPz3StageWorks(draft, stage.id);
 
                 return (
                   <li className="stage-card" key={stage.id}>
@@ -500,7 +498,7 @@ function Pz2ResultStep() {
         </section>
       </div>
 
-      <Pz2ReportSection />
+      <Pz3ReportSection />
     </div>
   );
 }

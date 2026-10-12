@@ -13,7 +13,7 @@ const idleThreshold = 0.45;
 export function recalculateDurationsByLabor(workItems: WorkItem[]): WorkItem[] {
   return workItems.map((item) => ({
     ...item,
-    duration: Math.max(1, Math.ceil(item.labor / item.workers)),
+    duration: item.isWaiting ? item.duration : Math.max(1, Math.ceil(item.labor / item.workers)),
   }));
 }
 
@@ -340,7 +340,7 @@ export function validateNetwork(workItems: WorkItem[]): NetworkValidationError[]
   const ids = new Set(workItems.map((item) => item.id));
 
   for (const item of workItems) {
-    if (item.workers < 1) {
+    if (item.workers < 1 && !(item.isWaiting && item.workers === 0 && item.labor === 0)) {
       errors.push({ type: 'invalid-workers', workId: item.id, message: `В работе ${item.code} сотрудников должно быть не меньше 1.` });
     }
     if (item.duration < 1) {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createPz2PdfBlob } from './pz2Report';
-import type { Pz2PdfSummary } from './pz2Report';
-import type { Pz2Result } from '../bridge/schema';
+import { createPz3PdfBlob, summarizePz3Works } from './pz3Report';
+import type { Pz3PdfSummary } from './pz3Report';
+import type { Pz3Result } from '../bridge/schema';
 
-const result: Pz2Result = {
+const result: Pz3Result = {
   works: [
     {
       id: 'w1',
@@ -36,7 +36,7 @@ const result: Pz2Result = {
   measuredLengthKm: 120.5,
 };
 
-const summary: Pz2PdfSummary = {
+const summary: Pz3PdfSummary = {
   team: 'Юнит-3',
   lineTitle: 'ТЭД-21',
   createdAt: '2026-09-09T10:00:00.000Z',
@@ -47,9 +47,15 @@ const summary: Pz2PdfSummary = {
   conditionLabels: { weakSoil: 'Слабые грунты', rocky: 'Скальные породы' },
 };
 
-describe('отчёт ПЗ2 в PDF', () => {
+describe('отчёт ПЗ3 в PDF', () => {
+  it('сводит длину линейных работ и количество стрелок по отдельности', () => {
+    const rows = summarizePz3Works(result, summary.workKindLabels);
+
+    expect(rows).toContainEqual(['Линия на земляном полотне', '1 уч. · 120,5 км']);
+    expect(rows).toContainEqual(['Стрелочный перевод 1/25', '4 шт.']);
+  });
   it('собирается в непустой PDF-файл', async () => {
-    const blob = await createPz2PdfBlob(summary);
+    const blob = await createPz3PdfBlob(summary);
     const head = new TextDecoder().decode((await blob.arrayBuffer()).slice(0, 5));
 
     expect(blob.size).toBeGreaterThan(10_000);
@@ -57,7 +63,7 @@ describe('отчёт ПЗ2 в PDF', () => {
   }, 30_000);
 
   it('собирается и на пустой работе — студент мог не дойти до конца', async () => {
-    const empty: Pz2PdfSummary = {
+    const empty: Pz3PdfSummary = {
       ...summary,
       result: {
         ...result,
@@ -69,6 +75,6 @@ describe('отчёт ПЗ2 в PDF', () => {
       },
     };
 
-    await expect(createPz2PdfBlob(empty)).resolves.toBeInstanceOf(Blob);
+    await expect(createPz3PdfBlob(empty)).resolves.toBeInstanceOf(Blob);
   }, 30_000);
 });

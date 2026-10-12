@@ -1,26 +1,26 @@
 import { useModuleState } from '../../bridge/context';
 import { GroupedNumberInput } from '../../shared/ui/GroupedNumberInput';
-import { getPz2StageColor, getPz2StageWorks, parsePz2Number, pluralWorks } from './model';
-import { getPz2LoadColumns, getPz2Plan, getPz2WorkLaborHours } from './plan';
-import type { Pz2Draft } from './types';
+import { getPz3StageColor, getPz3StageWorks, parsePz3Number, pluralWorks } from './model';
+import { getPz3LoadColumns, getPz3Plan, getPz3WorkLaborHours } from './plan';
+import type { Pz3Draft } from './types';
 
 /**
- * Шаг 04 ПЗ2: ресурсный график (ТЗ ПЗ2 §8).
+ * Шаг 04 ПЗ3: ресурсный график (ТЗ ПЗ3 §8).
  *
  * Людей на проект фиксированное число, студент раскладывает их по этапам.
  * Этапы строятся параллельно, поэтому от раскладки зависит и срок, и ровность
  * загрузки: гистограмма внизу — то, ради чего экран и сделан.
  */
 export function PlanStep() {
-  const { draft, updateDraft } = useModuleState<Pz2Draft>();
-  const totalWorkers = parsePz2Number(draft.totalWorkers) ?? 0;
+  const { draft, updateDraft } = useModuleState<Pz3Draft>();
+  const totalWorkers = parsePz3Number(draft.totalWorkers) ?? 0;
   const allocations = draft.stages.map((stage) => ({
     stageId: stage.id,
-    workers: parsePz2Number(draft.workersByStage[stage.id] ?? '') ?? 0,
+    workers: parsePz3Number(draft.workersByStage[stage.id] ?? '') ?? 0,
   }));
-  const plan = getPz2Plan(draft, allocations, totalWorkers);
+  const plan = getPz3Plan(draft, allocations, totalWorkers);
   const left = totalWorkers - plan.assignedWorkers;
-  const load = getPz2LoadColumns(plan.usage);
+  const load = getPz3LoadColumns(plan.usage);
   const peakHeight = Math.max(totalWorkers, ...load.map((column) => column.workers), 1);
 
   return (
@@ -30,10 +30,10 @@ export function PlanStep() {
         <h3>Сколько рабочих и как они разложены по этапам</h3>
 
         <div className="plan-total">
-          <label htmlFor="pz2-total-workers">Всего рабочих на проект</label>
+          <label htmlFor="pz3-total-workers">Всего рабочих на проект</label>
           <GroupedNumberInput
             ariaLabel="Всего рабочих на проект"
-            id="pz2-total-workers"
+            id="pz3-total-workers"
             onChange={(value) => updateDraft((current) => ({ ...current, totalWorkers: value }))}
             value={draft.totalWorkers}
           />
@@ -47,12 +47,12 @@ export function PlanStep() {
         ) : (
           <ul className="plan-stages">
             {draft.stages.map((stage) => {
-              const works = getPz2StageWorks(draft, stage.id);
-              const laborHours = works.reduce((sum, work) => sum + getPz2WorkLaborHours(work), 0);
+              const works = getPz3StageWorks(draft, stage.id);
+              const laborHours = works.reduce((sum, work) => sum + getPz3WorkLaborHours(work), 0);
 
               return (
                 <li key={stage.id}>
-                  <span aria-hidden="true" className="stage-card__color" style={{ background: getPz2StageColor(stage.order) }} />
+                  <span aria-hidden="true" className="stage-card__color" style={{ background: getPz3StageColor(stage.order) }} />
                   <span className="plan-stages__title">
                     <strong>{stage.title}</strong>
                     <span className="work-card__meta">
@@ -96,7 +96,7 @@ export function PlanStep() {
           <div className="gantt">
             {draft.stages.map((stage) => {
               const stageItems = plan.items.filter((item) =>
-                getPz2StageWorks(draft, stage.id).some((work) => work.id === item.id),
+                getPz3StageWorks(draft, stage.id).some((work) => work.id === item.id),
               );
 
               if (stageItems.length === 0) {
@@ -114,7 +114,7 @@ export function PlanStep() {
                         className="gantt__bar"
                         key={item.id}
                         style={{
-                          background: getPz2StageColor(stage.order),
+                          background: getPz3StageColor(stage.order),
                           left: `${(item.earlyStart / plan.metrics.projectDuration) * 100}%`,
                           width: `${(item.duration / plan.metrics.projectDuration) * 100}%`,
                         }}
@@ -172,10 +172,6 @@ export function PlanStep() {
           </div>
         </dl>
 
-        <p className="status-note">
-          Нормативы трудоёмкости пока черновые: заказчик разрешил сгенерировать их, чтобы не ждать (ТЗ §9), и передал на
-          проверку эксперту. Сроки поменяются вместе с ними.
-        </p>
       </section>
     </div>
   );

@@ -191,26 +191,26 @@ export interface Pz1Result {
 }
 
 /**
- * Итог ПЗ2 (ТЗ ПЗ2 §10). Длины и количества здесь уже числа: в черновике они
+ * Итог ПЗ3 (ТЗ ПЗ3 §10). Длины и количества здесь уже числа: в черновике они
  * живут строками, потому что это поля ввода, а в мост уходит посчитанное.
  */
-export interface Pz2Work {
+export interface Pz3Work {
   id: string;
-  kind: Pz2WorkKind;
+  kind: Pz3WorkKind;
   /** Длина участка, км. null у штучных работ — у них считается count. */
   lengthKm: number | null;
   /** Количество, шт. null у линейных работ. */
   count: number | null;
   /** Этап, которому принадлежит работа. null — работа в общем пуле. */
   stageId: string | null;
-  conditions: Pz2SoilCondition[];
+  conditions: Pz3SoilCondition[];
   /** Где работа стоит на трассе, км от начала. Есть только у намеренных линейкой. */
   span?: { fromKm: number; toKm: number };
   /** Положение объекта без намеренного участка на трассе, км от начала. */
   positionKm?: number;
 }
 
-export type Pz2WorkKind =
+export type Pz3WorkKind =
   | 'existingLineRepair'
   | 'earthworks'
   | 'ballastTrack'
@@ -219,19 +219,25 @@ export type Pz2WorkKind =
   | 'tunnel'
   | 'turnout';
 
-export type Pz2SoilCondition = 'weakSoil' | 'rocky';
+export type Pz3SoilCondition =
+  | 'weakSoil' | 'rocky'
+  | 'shortWindows' | 'ballastContamination' | 'formationDeformation' | 'restrictedAccess'
+  | 'weakFoundation' | 'groundwater' | 'highEmbankment' | 'deepCut'
+  | 'settlement' | 'transition' | 'curvedViaduct'
+  | 'weakBridgeSupport' | 'riverSupports' | 'navigableRiver'
+  | 'unstableTunnelGround' | 'tunnelGroundwater' | 'abrasiveRock' | 'underBuildings';
 
 /** Пространственный этап: участок трассы, который строится параллельно другим. */
-export interface Pz2Stage {
+export interface Pz3Stage {
   id: string;
   title: string;
   order: number;
 }
 
-/** Ответ на упражнение «критический путь» (ТЗ ПЗ2 §7.2). */
-export interface Pz2CriticalPathAnswer {
+/** Ответ на упражнение «критический путь» (ТЗ ПЗ3 §7.2). */
+export interface Pz3CriticalPathAnswer {
   exerciseId: string;
-  /** Сырой ввод пути; оставлен для файлов ПЗ2, сохранённых до появления таблицы сроков. */
+  /** Сырой ввод пути; оставлен для файлов ПЗ3, сохранённых до появления таблицы сроков. */
   answer: string;
   correct: boolean;
   /** Полный ответ на вариант: сроки работ, срок проекта, пути и объяснение. */
@@ -239,7 +245,7 @@ export interface Pz2CriticalPathAnswer {
 }
 
 /** Ресурсный план: как студент разложил людей и что из этого вышло. */
-export interface Pz2PlanResult {
+export interface Pz3PlanResult {
   totalWorkers: number;
   /** Сколько людей назначено этапу: id этапа → число. */
   workersByStage: Record<string, number>;
@@ -249,10 +255,10 @@ export interface Pz2PlanResult {
 }
 
 /**
- * Отчёт по проекту. Числа посчитаны по временным нормативам (ТЗ ПЗ2 §9):
+ * Отчёт по проекту. Числа посчитаны по временным нормативам (ТЗ ПЗ3 §9):
  * заказчик разрешил их сгенерировать до проверки экспертом.
  */
-export interface Pz2ReportResult {
+export interface Pz3ReportResult {
   laborHours: number;
   machineHours: number;
   materials: { title: string; unit: string; amount: number }[];
@@ -261,17 +267,17 @@ export interface Pz2ReportResult {
   normsAreDraft: true;
 }
 
-export interface Pz2Result {
-  works: Pz2Work[];
-  stages: Pz2Stage[];
-  criticalPath: Pz2CriticalPathAnswer[];
+export interface Pz3Result {
+  works: Pz3Work[];
+  stages: Pz3Stage[];
+  criticalPath: Pz3CriticalPathAnswer[];
   /**
    * Упражнение на выравнивание загрузки: id работы учебного примера → сдвиг в
    * днях. Поле необязательное — файлы, сохранённые раньше, его не имеют.
    */
   levelingShifts?: Record<string, number>;
-  plan: Pz2PlanResult;
-  report: Pz2ReportResult;
+  plan: Pz3PlanResult;
+  report: Pz3ReportResult;
   /** Эталон из ПЗ1, с которым сверялась сумма длин. */
   routeLengthKm: number;
   /** Сумма длин линейных работ на момент сохранения. */
@@ -283,8 +289,6 @@ export interface Pz2Result {
    */
   previewImage?: string;
 }
-// TODO: уточнить по методичке при разработке ПЗ3.
-export type Pz3Result = unknown;
 // TODO: уточнить по методичке при разработке ПЗ4.
 export type Pz4Result = unknown;
 // TODO: уточнить по методичке при разработке ПЗ5.
@@ -330,11 +334,10 @@ export interface BridgeSchema {
   passport: Passport;
   /** Когда файл был записан. Вместе с runId показывает, как шла работа. */
   savedAt?: string;
-  progress?: Partial<Record<'pz1' | 'pz2' | 'pz3' | 'pz4' | 'pz5' | 'pz6' | 'pz7' | 'pz8', Record<string, boolean>>>;
-  position?: Partial<Record<'pz1' | 'pz2' | 'pz3' | 'pz4' | 'pz5' | 'pz6' | 'pz7' | 'pz8', ModulePosition>>;
+  progress?: Partial<Record<'pz1' | 'pz3' | 'pz4' | 'pz5' | 'pz6' | 'pz7' | 'pz8', Record<string, boolean>>>;
+  position?: Partial<Record<'pz1' | 'pz3' | 'pz4' | 'pz5' | 'pz6' | 'pz7' | 'pz8', ModulePosition>>;
   completed: Partial<{
     pz1: Pz1Result;
-    pz2: Pz2Result;
     pz3: Pz3Result;
     pz4: Pz4Result;
     pz5: Pz5Result;

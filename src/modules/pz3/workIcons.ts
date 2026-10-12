@@ -1,4 +1,4 @@
-import type { Pz2WorkKind } from './types';
+import type { Pz3WorkKind } from './types';
 
 /**
  * Значки искусственных сооружений на карте.
@@ -12,7 +12,7 @@ import type { Pz2WorkKind } from './types';
  * Контуры лежат в сетке 24 × 24 и рассчитаны на обводку без заливки: так один
  * значок одинаково читается и на 14 пикселях маркера, и на легенде отчёта.
  */
-export interface Pz2WorkIcon {
+export interface Pz3WorkIcon {
   /** Контуры значка в координатах сетки. */
   paths: string[];
   /** Что за сооружение — подпись легенды и всплывающей подсказки. */
@@ -22,16 +22,16 @@ export interface Pz2WorkIcon {
 }
 
 /** Сторона сетки, в которой нарисованы контуры. */
-export const PZ2_ICON_GRID = 24;
+export const PZ3_ICON_GRID = 24;
 /** Толщина обводки в той же сетке. */
-export const PZ2_ICON_STROKE = 2;
+export const PZ3_ICON_STROKE = 2;
 
 /**
  * Значки есть не у всех работ, а только у сооружений, которые видно как объект:
  * мост, тоннель, эстакада и стрелочный перевод. Земляное полотно и путь занимают трассу целиком,
  * и точка на линии для них ничего не значит.
  */
-export const pz2WorkIcons: Partial<Record<Pz2WorkKind, Pz2WorkIcon>> = {
+export const pz3WorkIcons: Partial<Record<Pz3WorkKind, Pz3WorkIcon>> = {
   bridge: {
     label: 'мост',
     color: '#245C9A',
@@ -58,11 +58,11 @@ export const pz2WorkIcons: Partial<Record<Pz2WorkKind, Pz2WorkIcon>> = {
   },
 };
 
-export function getPz2WorkIcon(kind: Pz2WorkKind): Pz2WorkIcon | null {
-  return pz2WorkIcons[kind] ?? null;
+export function getPz3WorkIcon(kind: Pz3WorkKind): Pz3WorkIcon | null {
+  return pz3WorkIcons[kind] ?? null;
 }
 
 /** Виды работ, которые отмечаются значком, в порядке объявления. */
-export function getPz2IconKinds(): Pz2WorkKind[] {
-  return Object.keys(pz2WorkIcons) as Pz2WorkKind[];
+export function getPz3IconKinds(): Pz3WorkKind[] {
+  return Object.keys(pz3WorkIcons) as Pz3WorkKind[];
 }

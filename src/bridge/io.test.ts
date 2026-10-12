@@ -24,8 +24,7 @@ describe('bridge io', () => {
     expect(parseBridgeJson(JSON.stringify(bridge))).toEqual(bridge);
   });
 
-  // Файл из ПЗ1, сохранённый до появления ПЗ2, должен открываться как раньше
-  // (ТЗ ПЗ2 §10): версия поднялась, но ломающих изменений в ней нет.
+  // Файл из ПЗ1, сохранённый до появления следующего модуля, открывается как раньше.
   it('keeps backward compatibility with schema version 1.1', () => {
     const bridge = {
       schemaVersion: '1.1',
@@ -34,6 +33,23 @@ describe('bridge io', () => {
     };
 
     expect(parseBridgeJson(JSON.stringify(bridge))).toEqual(bridge);
+  });
+
+  it('переносит данные из старого номера задания в ПЗ3', () => {
+    const legacy = {
+      schemaVersion: '1.2',
+      passport: { team: 'Группа 1', lineTitle: 'Тестовая линия', createdAt: '2026-07-10T00:00:00.000Z' },
+      completed: { pz2: { works: [{ id: 'work-1' }] } },
+      progress: { pz2: { works: true } },
+      position: { pz2: { phase: 'task', stepId: 'works' } },
+    };
+
+    const imported = parseBridgeJson(JSON.stringify(legacy));
+
+    expect(imported.completed.pz3).toEqual(legacy.completed.pz2);
+    expect(imported.progress?.pz3).toEqual(legacy.progress.pz2);
+    expect(imported.position?.pz3).toEqual(legacy.position.pz2);
+    expect(serializeBridge(imported)).not.toContain('"pz2"');
   });
 
   it('rejects broken JSON', () => {

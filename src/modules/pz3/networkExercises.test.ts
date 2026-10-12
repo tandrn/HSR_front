@@ -5,7 +5,7 @@ import {
   createEmptyCriticalPathSubmission,
   matchCriticalPathSet,
 } from '../../shared/lib/criticalPath';
-import { pz2NetworkExercises } from './networkExercises';
+import { pz3NetworkExercises } from './networkExercises';
 
 describe('семь вариантов критического пути из упражнения заказчика', () => {
   const keys = [
@@ -25,8 +25,18 @@ describe('семь вариантов критического пути из у�
     },
   ];
 
+  it('два дополнительных варианта содержат опцию как отдельную зависимую работу', () => {
+    expect(pz3NetworkExercises).toHaveLength(9);
+    for (const id of ['repair-cleaning', 'ballast-piles']) {
+      const variant = pz3NetworkExercises.find((item) => item.id === id)!;
+      expect(variant.works.find((work) => work.id === 'H')?.predecessors).toEqual(['C']);
+      expect(variant.works.find((work) => work.id === 'E')?.predecessors).toContain('H');
+      expect(calculateCriticalPath(variant.works).durationDays).toBeGreaterThan(0);
+    }
+  });
+
   it.each(keys)('$id: срок, пути и резервы следуют из таблицы зависимостей', ({ id, duration, paths, float }) => {
-    const exercise = pz2NetworkExercises.find((item) => item.id === id)!;
+    const exercise = pz3NetworkExercises.find((item) => item.id === id)!;
     const result = calculateCriticalPath(exercise.works);
     expect(result.durationDays).toBe(duration);
     expect(result.paths).toEqual(paths);
@@ -46,7 +56,7 @@ describe('семь вариантов критического пути из у�
   });
 
   it('проверяет обязательные ранние сроки, срок проекта и пути без раскрытия чисел в результате', () => {
-    const result = calculateCriticalPath(pz2NetworkExercises[0].works);
+    const result = calculateCriticalPath(pz3NetworkExercises[0].works);
     const submission = {
       ...createEmptyCriticalPathSubmission(),
       durationDays: '11',

@@ -1,30 +1,30 @@
 import { useMemo, useRef, useState } from 'react';
 import { useModuleState } from '../../bridge/context';
-import { Pz2RouteMap } from './lazyRouteMap';
+import { Pz3RouteMap } from './lazyRouteMap';
+import { getPz3OptionLabel } from './options';
 import {
-  assignPz2WorkToStage,
-  createPz2Ruler,
-  createPz2Stage,
-  formatPz2Km,
-  getPz2RoutePointMarks,
-  getPz2RouteSource,
-  getPz2SegmentMarks,
-  getPz2StageColor,
-  getPz2StageSpans,
-  getPz2StationMarks,
-  getPz2WorkMarks,
+  assignPz3WorkToStage,
+  createPz3Ruler,
+  createPz3Stage,
+  formatPz3Km,
+  getPz3RoutePointMarks,
+  getPz3RouteSource,
+  getPz3SegmentMarks,
+  getPz3StageColor,
+  getPz3StageSpans,
+  getPz3StationMarks,
+  getPz3WorkMarks,
   pluralWorks,
-  getPz2StageWorks,
-  getPz2WorkKind,
-  parsePz2Number,
-  pz2SoilConditions,
-  removePz2Stage,
-  renamePz2Stage,
+  getPz3StageWorks,
+  getPz3WorkKind,
+  parsePz3Number,
+  removePz3Stage,
+  renamePz3Stage,
 } from './model';
-import type { Pz2Draft, Pz2WorkDraft } from './types';
+import type { Pz3Draft, Pz3WorkDraft } from './types';
 
 /**
- * Шаг 02 ПЗ2: разбиение трассы на пространственные этапы (ТЗ ПЗ2 §6).
+ * Шаг 02 ПЗ3: разбиение трассы на пространственные этапы (ТЗ ПЗ3 §6).
  *
  * Этап — участок трассы, который строится параллельно другим, а не отрезок
  * времени. Работы разносятся по этапам перетаскиванием; работа принадлежит
@@ -36,23 +36,23 @@ import type { Pz2Draft, Pz2WorkDraft } from './types';
  * был бы непроходим с клавиатуры.
  */
 export function StagesStep() {
-  const { draft, importedBridge, updateDraft } = useModuleState<Pz2Draft>();
+  const { draft, importedBridge, updateDraft } = useModuleState<Pz3Draft>();
   // См. пояснение в WorksStep: пересбор линейки на каждый рендер стоил дорого,
   // а трасса из ПЗ1 меняется только при загрузке другого файла.
-  const source = useMemo(() => getPz2RouteSource(importedBridge), [importedBridge]);
-  const ruler = useMemo(() => createPz2Ruler(source), [source]);
-  const stations = useMemo(() => getPz2StationMarks(source, ruler), [source, ruler]);
-  const routePoints = useMemo(() => getPz2RoutePointMarks(source, ruler), [source, ruler]);
-  const segments = useMemo(() => getPz2SegmentMarks(source), [source]);
-  const workMarks = useMemo(() => getPz2WorkMarks(draft, ruler.totalKm), [draft.works, ruler.totalKm]);
-  const stageSpans = useMemo(() => getPz2StageSpans(draft), [draft]);
+  const source = useMemo(() => getPz3RouteSource(importedBridge), [importedBridge]);
+  const ruler = useMemo(() => createPz3Ruler(source), [source]);
+  const stations = useMemo(() => getPz3StationMarks(source, ruler), [source, ruler]);
+  const routePoints = useMemo(() => getPz3RoutePointMarks(source, ruler), [source, ruler]);
+  const segments = useMemo(() => getPz3SegmentMarks(source), [source]);
+  const workMarks = useMemo(() => getPz3WorkMarks(draft, ruler.totalKm), [draft.works, ruler.totalKm]);
+  const stageSpans = useMemo(() => getPz3StageSpans(draft), [draft]);
   const [hoveredStageId, setHoveredStageId] = useState('');
   const [title, setTitle] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const addButtonRef = useRef<HTMLButtonElement | null>(null);
   const [draggedId, setDraggedId] = useState('');
   const [dropTargetId, setDropTargetId] = useState<string | null | undefined>(undefined);
-  const poolWorks = getPz2StageWorks(draft, null);
+  const poolWorks = getPz3StageWorks(draft, null);
 
   function addStage() {
     const trimmed = title.trim();
@@ -63,7 +63,7 @@ export function StagesStep() {
 
     updateDraft((current) => ({
       ...current,
-      stages: [...current.stages, createPz2Stage(trimmed, current.stages.length)],
+      stages: [...current.stages, createPz3Stage(trimmed, current.stages.length)],
     }));
     setTitle('');
     closeAddForm();
@@ -76,7 +76,7 @@ export function StagesStep() {
   }
 
   function moveWork(workId: string, stageId: string | null) {
-    updateDraft((current) => assignPz2WorkToStage(current, workId, stageId));
+    updateDraft((current) => assignPz3WorkToStage(current, workId, stageId));
   }
 
   function dropHandlers(stageId: string | null) {
@@ -102,7 +102,7 @@ export function StagesStep() {
 
   return (
     <div className="stages-step">
-      <Pz2RouteMap
+      <Pz3RouteMap
         highlightedStageId={hoveredStageId}
         marksKm={[]}
         onMarksChange={() => undefined}
@@ -129,10 +129,10 @@ export function StagesStep() {
 
         {isAdding ? (
           <div className="stage-add-form">
-            <label htmlFor="pz2-stage-title">Название этапа</label>
+            <label htmlFor="pz3-stage-title">Название этапа</label>
             <input
               autoFocus
-              id="pz2-stage-title"
+              id="pz3-stage-title"
               onChange={(event) => setTitle(event.target.value)}
               onKeyDown={(event) => {
                 // Enter добавляет, Esc отменяет — форма открывается на месте, и
@@ -193,7 +193,7 @@ export function StagesStep() {
         ) : (
           <ul className="stage-list">
             {draft.stages.map((stage) => {
-              const works = getPz2StageWorks(draft, stage.id);
+              const works = getPz3StageWorks(draft, stage.id);
 
               return (
                 <li
@@ -207,7 +207,7 @@ export function StagesStep() {
                     <span
                       aria-hidden="true"
                       className="stage-card__color"
-                      style={{ background: getPz2StageColor(stage.order) }}
+                      style={{ background: getPz3StageColor(stage.order) }}
                     />
                     {/* Название правится на месте: из-за опечатки этап не должен
                         пересоздаваться — вместе с ним уехали бы и работы. */}
@@ -215,7 +215,7 @@ export function StagesStep() {
                       aria-label={`Название этапа ${stage.order + 1}`}
                       className="stage-card__title"
                       onChange={(event) =>
-                        updateDraft((current) => renamePz2Stage(current, stage.id, event.target.value))
+                        updateDraft((current) => renamePz3Stage(current, stage.id, event.target.value))
                       }
                       value={stage.title}
                     />
@@ -223,7 +223,7 @@ export function StagesStep() {
                     <button
                       aria-label={`Удалить этап ${stage.title}`}
                       className="data-entry__remove-column"
-                      onClick={() => updateDraft((current) => removePz2Stage(current, stage.id))}
+                      onClick={() => updateDraft((current) => removePz3Stage(current, stage.id))}
                       type="button"
                     >
                       ×
@@ -241,7 +241,7 @@ export function StagesStep() {
                           key={work.id}
                           onDragStart={setDraggedId}
                           onMove={moveWork}
-                          stageColor={getPz2StageColor(stage.order)}
+                          stageColor={getPz3StageColor(stage.order)}
                           work={work}
                         />
                       ))}
@@ -292,8 +292,8 @@ export function StagesStep() {
 }
 
 interface WorkCardProps {
-  draft: Pz2Draft;
-  work: Pz2WorkDraft;
+  draft: Pz3Draft;
+  work: Pz3WorkDraft;
   /** Карточка сейчас переносится: на прежнем месте от неё остаётся след. */
   isDragging: boolean;
   /**
@@ -308,8 +308,8 @@ interface WorkCardProps {
 }
 
 function WorkCard({ draft, work, isDragging, stageColor, onDragStart, onMove }: WorkCardProps) {
-  const kind = getPz2WorkKind(work.kind);
-  const conditions = pz2SoilConditions.filter((item) => work.conditions.includes(item.id));
+  const kind = getPz3WorkKind(work.kind);
+  const conditions = work.conditions.map((id) => ({ id, label: getPz3OptionLabel(id, work.kind) }));
 
   return (
     <li
@@ -332,7 +332,7 @@ function WorkCard({ draft, work, isDragging, stageColor, onDragStart, onMove }: 
       {conditions.length > 0 ? (
         <span className="work-card__conditions">
           {conditions.map((item) => (
-            <span className="work-card__pill" key={item.id} title={item.hint}>
+            <span className="work-card__pill" key={item.id}>
               {item.label}
             </span>
           ))}
@@ -358,34 +358,34 @@ function WorkCard({ draft, work, isDragging, stageColor, onDragStart, onMove }: 
 }
 
 /** Где работа лежит на трассе — по нему и решают, какому этапу она принадлежит. */
-function describeSpan(span: NonNullable<Pz2WorkDraft['span']>) {
+function describeSpan(span: NonNullable<Pz3WorkDraft['span']>) {
   const from = Math.min(span.fromKm, span.toKm);
   const to = Math.max(span.fromKm, span.toKm);
 
-  return `${formatPz2Km(from).replace(' км', '')} — ${formatPz2Km(to)} трассы`;
+  return `${formatPz3Km(from).replace(' км', '')} — ${formatPz3Km(to)} трассы`;
 }
 
-function describeWork(work: Pz2WorkDraft) {
-  const kind = getPz2WorkKind(work.kind);
+function describeWork(work: Pz3WorkDraft) {
+  const kind = getPz3WorkKind(work.kind);
 
   if (kind.measure === 'count') {
-    return `${parsePz2Number(work.count) ?? 0} шт.`;
+    return `${parsePz3Number(work.count) ?? 0} шт.`;
   }
 
-  return formatPz2Km(parsePz2Number(work.lengthKm) ?? 0);
+  return formatPz3Km(parsePz3Number(work.lengthKm) ?? 0);
 }
 
 /** Сводка по этапу: сколько работ и сколько в них километров. */
-function describeWorks(works: Pz2WorkDraft[]) {
+function describeWorks(works: Pz3WorkDraft[]) {
   if (works.length === 0) {
     return 'пусто';
   }
 
   const lengthKm = works.reduce(
     (sum, work) =>
-      getPz2WorkKind(work.kind).measure === 'length' ? sum + (parsePz2Number(work.lengthKm) ?? 0) : sum,
+      getPz3WorkKind(work.kind).measure === 'length' ? sum + (parsePz3Number(work.lengthKm) ?? 0) : sum,
     0,
   );
 
-  return `${works.length} ${pluralWorks(works.length)} · ${formatPz2Km(lengthKm)}`;
+  return `${works.length} ${pluralWorks(works.length)} · ${formatPz3Km(lengthKm)}`;
 }

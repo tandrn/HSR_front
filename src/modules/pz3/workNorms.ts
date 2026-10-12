@@ -1,9 +1,9 @@
-import type { Pz2SoilCondition, Pz2WorkKind } from './types';
+import type { Pz3SoilCondition, Pz3WorkKind } from './types';
 
 /**
  * ВРЕМЕННЫЕ НОРМАТИВЫ. Подлежат замене после проверки экспертом.
  *
- * Заказчик разрешил их сгенерировать, чтобы не задерживать разработку (ТЗ ПЗ2
+ * Заказчик разрешил их сгенерировать, чтобы не задерживать разработку (ТЗ ПЗ3
  * §9): на каждый тип работы три-четыре подработы, два-три материала, одна-две
  * машины и человеко-часы — всё в расчёте на единицу (километр у линейных работ,
  * штука у штучных). Значения заведомо черновые: их выверяет привлечённый
@@ -21,34 +21,36 @@ import type { Pz2SoilCondition, Pz2WorkKind } from './types';
  * есть меняют состав работ. Коэффициентов он не называл (вопрос в-6), а
  * придумывать множитель — значит выдать догадку за норматив.
  */
-export interface Pz2SubWorkNorm {
+export interface Pz3SubWorkNorm {
   title: string;
   /** Человеко-часы на единицу работы. */
   laborHours: number;
 }
 
-export interface Pz2MaterialNorm {
+export interface Pz3MaterialNorm {
   title: string;
   unit: string;
   /** Расход на единицу работы. */
   perUnit: number;
 }
 
-export interface Pz2MachineNorm {
+export interface Pz3MachineNorm {
   title: string;
   /** Машино-часы на единицу работы. */
   machineHours: number;
 }
 
-export interface Pz2WorkNorm {
+export interface Pz3WorkNorm {
   /** Единица нормирования — та же, которой работа меряется на экране 01. */
   unit: 'км' | 'шт.';
-  subWorks: Pz2SubWorkNorm[];
-  materials: Pz2MaterialNorm[];
-  machines: Pz2MachineNorm[];
+  /** Единичное согласование относится к объекту целиком, а не к каждому километру. */
+  basis?: 'work';
+  subWorks: Pz3SubWorkNorm[];
+  materials: Pz3MaterialNorm[];
+  machines: Pz3MachineNorm[];
 }
 
-export const pz2WorkNorms: Record<Pz2WorkKind, Pz2WorkNorm> = {
+export const pz3WorkNorms: Record<Pz3WorkKind, Pz3WorkNorm> = {
   existingLineRepair: {
     unit: 'км',
     subWorks: [
@@ -175,7 +177,7 @@ export const pz2WorkNorms: Record<Pz2WorkKind, Pz2WorkNorm> = {
  * Что добавляют дополнительные условия. Это подработы, а не коэффициенты:
  * состав работ меняется, и в отчёте это видно строкой, а не поправкой в числе.
  */
-export const pz2ConditionNorms: Record<Pz2SoilCondition, Pz2WorkNorm> = {
+export const pz3ConditionNorms: Record<'weakSoil' | 'rocky', Pz3WorkNorm> = {
   weakSoil: {
     unit: 'км',
     subWorks: [
@@ -199,5 +201,57 @@ export const pz2ConditionNorms: Record<Pz2SoilCondition, Pz2WorkNorm> = {
   },
 };
 
+/** Временные нормативы добавочных операций; замена значений не меняет сами правила опций. */
+export const pz3OptionNorms: Partial<Record<Pz3SoilCondition, Pz3WorkNorm>> = {
+  ballastContamination: {
+    unit: 'км', subWorks: [{ title: 'Очистка балласта', laborHours: 180 }],
+    materials: [], machines: [{ title: 'Балласточистительная машина', machineHours: 32 }],
+  },
+  formationDeformation: {
+    unit: 'км', subWorks: [{ title: 'Восстановление земляного полотна', laborHours: 520 }],
+    materials: [{ title: 'Грунт карьерный', unit: 'м³', perUnit: 2400 }],
+    machines: [{ title: 'Экскаватор', machineHours: 72 }],
+  },
+  weakFoundation: pz3ConditionNorms.weakSoil,
+  weakBridgeSupport: pz3ConditionNorms.weakSoil,
+  groundwater: {
+    unit: 'км', subWorks: [{ title: 'Создание песчаных свай', laborHours: 780 }],
+    materials: [{ title: 'Песок для свай', unit: 'м³', perUnit: 1800 }],
+    machines: [{ title: 'Буровая установка', machineHours: 150 }],
+  },
+  transition: {
+    unit: 'км', subWorks: [{ title: 'Устройство переходного участка', laborHours: 620 }],
+    materials: [{ title: 'Бетон B40', unit: 'м³', perUnit: 280 }],
+    machines: [{ title: 'Кран гусеничный 250 т', machineHours: 80 }],
+  },
+  curvedViaduct: {
+    unit: 'км', subWorks: [{ title: 'Геодезическая выверка', laborHours: 140 }],
+    materials: [], machines: [],
+  },
+  navigableRiver: {
+    unit: 'шт.', basis: 'work', subWorks: [{ title: 'Согласование моста', laborHours: 160 }],
+    materials: [], machines: [],
+  },
+  unstableTunnelGround: {
+    unit: 'км', subWorks: [{ title: 'Временные усиления', laborHours: 900 }],
+    materials: [{ title: 'Временные металлоконструкции', unit: 'т', perUnit: 120 }],
+    machines: [{ title: 'Кран гусеничный 250 т', machineHours: 90 }],
+  },
+  underBuildings: {
+    unit: 'км', subWorks: [{ title: 'Временные усиления', laborHours: 900 }],
+    materials: [{ title: 'Временные металлоконструкции', unit: 'т', perUnit: 120 }],
+    machines: [{ title: 'Кран гусеничный 250 т', machineHours: 90 }],
+  },
+  tunnelGroundwater: {
+    unit: 'км', subWorks: [{ title: 'Организация водоотлива', laborHours: 450 }],
+    materials: [], machines: [{ title: 'Насосная установка', machineHours: 220 }],
+  },
+};
+
+export function getPz3AdditionalNorm(id: Pz3SoilCondition): Pz3WorkNorm | undefined {
+  if (id === 'weakSoil' || id === 'rocky') return pz3ConditionNorms[id];
+  return pz3OptionNorms[id];
+}
+
 /** Смена — восемь часов: из неё считается длительность работы в днях. */
-export const PZ2_SHIFT_HOURS = 8;
+export const PZ3_SHIFT_HOURS = 8;

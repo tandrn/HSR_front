@@ -6,7 +6,7 @@ import type { ModuleDefinition, PzNumber } from './types';
  *
  * Каждое задание встраивается в iSpring отдельным Web Object по своему адресу
  * `?pz=N`, и студент за раз открывает ровно одно. Раньше сборка была общей:
- * на ПЗ2 грузился код ПЗ1 вместе с библиотекой диаграмм, которая нужна только
+ * на ПЗ3 грузился код ПЗ1 вместе с библиотекой диаграмм, которая нужна только
  * ему, и наоборот. Теперь на страницу приезжает только её модуль.
  */
 export const moduleRegistry: Partial<Record<PzNumber, ModuleDefinition>> = {
@@ -16,10 +16,10 @@ export const moduleRegistry: Partial<Record<PzNumber, ModuleDefinition>> = {
     shortTitle: 'ПЗ1',
     Component: lazy(() => import('./pz1').then((module) => ({ default: module.Pz1Module }))),
   },
-  2: {
-    id: 2,
-    title: 'ПЗ2. Календарно-сетевой график',
-    shortTitle: 'ПЗ2',
-    Component: lazy(() => import('./pz2').then((module) => ({ default: module.Pz2Module }))),
+  3: {
+    id: 3,
+    title: 'ПЗ3. Календарно-сетевой график',
+    shortTitle: 'ПЗ3',
+    Component: lazy(() => import('./pz3').then((module) => ({ default: module.Pz3Module }))),
   },
 };

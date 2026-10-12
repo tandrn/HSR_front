@@ -1,19 +1,19 @@
 import { Document, Image, Page, Path, StyleSheet, Svg, Text, View, pdf } from '@react-pdf/renderer';
 import { downloadTextFile } from '../bridge/io';
-import type { Pz2Result } from '../bridge/schema';
-import { PZ2_ICON_GRID, PZ2_ICON_STROKE, getPz2IconKinds, getPz2WorkIcon } from '../modules/pz2/workIcons';
-import { PZ2_LENGTH_TOLERANCE_KM } from '../modules/pz2/model';
+import type { Pz3Result } from '../bridge/schema';
+import { PZ3_ICON_GRID, PZ3_ICON_STROKE, getPz3IconKinds, getPz3WorkIcon } from '../modules/pz3/workIcons';
+import { PZ3_LENGTH_TOLERANCE_KM } from '../modules/pz3/model';
 import { KeyValueTable, PAGE_SIZE, formatDate, formatRequiredValue, styles } from './common';
 
 /**
- * Отчёт по ПЗ2 — то, по чему преподаватель проверяет работу.
+ * Отчёт по ПЗ3 — то, по чему преподаватель проверяет работу.
  *
  * В проекте нет ни бэкенда, ни журнала: студент сдаёт PDF, как и по ПЗ1.
  * Поэтому отчёт повторяет структуру задания — работы, этапы, ресурсный план,
  * расход материалов — и печатает те же числа, что студент видел на экранах.
  * Вёрстка общая с ПЗ1 (`./common`): это документы одного курса.
  */
-export interface Pz2PdfSummary {
+export interface Pz3PdfSummary {
   team: string;
   lineTitle: string;
   createdAt: string;
@@ -22,7 +22,7 @@ export interface Pz2PdfSummary {
   routeLengthKm: number;
   /** Снимок карты трассы. Пусто — студент не открывал карту в этом проходе. */
   previewImage?: string;
-  result: Pz2Result;
+  result: Pz3Result;
   /** Подписи типов работ и условий грунта: словарь живёт в модуле задания. */
   workKindLabels: Record<string, string>;
   conditionLabels: Record<string, string>;
@@ -56,20 +56,20 @@ const mapStyles = StyleSheet.create({
   stageWorkersCell: { width: '25%' },
 });
 
-export async function downloadPz2Pdf(summary: Pz2PdfSummary, fileName: string): Promise<void> {
-  const blob = await createPz2PdfBlob(summary);
+export async function downloadPz3Pdf(summary: Pz3PdfSummary, fileName: string): Promise<void> {
+  const blob = await createPz3PdfBlob(summary);
   downloadTextFile(fileName, 'application/pdf', await blob.arrayBuffer());
 }
 
-export async function createPz2PdfBlob(summary: Pz2PdfSummary): Promise<Blob> {
-  return pdf(<Pz2ReportDocument summary={summary} />).toBlob();
+export async function createPz3PdfBlob(summary: Pz3PdfSummary): Promise<Blob> {
+  return pdf(<Pz3ReportDocument summary={summary} />).toBlob();
 }
 
-function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
+function Pz3ReportDocument({ summary }: { summary: Pz3PdfSummary }) {
   const { result } = summary;
   const measuredKm = result.measuredLengthKm;
   const difference = measuredKm - summary.routeLengthKm;
-  const lengthMatches = Math.abs(difference) <= PZ2_LENGTH_TOLERANCE_KM;
+  const lengthMatches = Math.abs(difference) <= PZ3_LENGTH_TOLERANCE_KM;
 
   return (
     <Document
@@ -77,11 +77,11 @@ function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
       creator="vsm-simulator.ru"
       producer="vsm-simulator.ru"
       subject="Организация строительства ВСМ"
-      title={`Практическое задание № 2 — ${summary.team || 'команда не указана'}`}
+      title={`Практическое задание № 3 — ${summary.team || 'команда не указана'}`}
     >
       <Page size={PAGE_SIZE} style={styles.page}>
         <View style={styles.titleBlock}>
-          <Text style={styles.assignment}>Практическое задание № 2</Text>
+          <Text style={styles.assignment}>Практическое задание № 3</Text>
           <Text style={styles.title}>Организация строительства ВСМ</Text>
         </View>
 
@@ -97,8 +97,8 @@ function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
         <View style={styles.contents}>
           <Text style={styles.sectionTitle}>Содержание</Text>
           <Text style={styles.contentsLine}>1. Трасса на карте</Text>
-          <Text style={styles.contentsLine}>2. Работы по трассе</Text>
-          <Text style={styles.contentsLine}>3. Разбиение на этапы</Text>
+          <Text style={styles.contentsLine}>2. Сводка объёмов работ</Text>
+          <Text style={styles.contentsLine}>3. Работы по трассе и этапы</Text>
           <Text style={styles.contentsLine}>4. Ресурсный график</Text>
           <Text style={styles.contentsLine}>5. Расход материалов и машино-часы</Text>
         </View>
@@ -117,12 +117,9 @@ function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
         <WorkIconLegend result={result} />
       </Page>
 
-      {/* Работы и этапы — отдельной страницей: под снимком карты на ту же
-          страницу помещалась бы только шапка таблицы. */}
-      <Page size={PAGE_SIZE} style={styles.page} wrap={false}>
+      <Page size={PAGE_SIZE} style={styles.page}>
         <Header section="Работы и этапы" summary={summary} />
-
-        <Text style={styles.sectionTitle}>2. Работы по трассе</Text>
+        <Text style={styles.sectionTitle}>2. Сводка объёмов работ</Text>
         <KeyValueTable
           rows={[
             ['Работ перечислено', String(result.works.length)],
@@ -134,13 +131,17 @@ function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
             ],
           ]}
         />
+        <Text style={styles.sectionTitle}>По видам работ</Text>
+        <KeyValueTable rows={summarizePz3Works(result, summary.workKindLabels)} />
+
+        <Text style={styles.sectionTitle}>3. Работы по трассе</Text>
 
         {result.works.length > 0 ? (
           <View style={styles.table}>
             <View style={styles.tableRow}>
               <Text style={[styles.tableCellLabel, mapStyles.workTypeCell]}>Тип работы</Text>
               <Text style={[styles.tableCellValue, mapStyles.workVolumeCell]}>Объём</Text>
-              <Text style={[styles.tableCellValue, mapStyles.workConditionsCell]}>Условия</Text>
+              <Text style={[styles.tableCellValue, mapStyles.workConditionsCell]}>Опции</Text>
               <Text style={[styles.tableCellValue, mapStyles.workStageCell]}>Этап</Text>
             </View>
             {result.works.map((work) => (
@@ -162,7 +163,7 @@ function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
           <Text style={styles.paragraph}>Работы не перечислены.</Text>
         )}
 
-        <Text style={styles.sectionTitle}>3. Разбиение на этапы</Text>
+        <Text style={styles.sectionTitle}>3.1. Разбиение на этапы</Text>
         {result.stages.length > 0 ? (
           <View style={styles.table}>
             <View style={styles.tableRow}>
@@ -215,15 +216,6 @@ function Pz2ReportDocument({ summary }: { summary: Pz2PdfSummary }) {
           ]}
         />
 
-        {/* Оговорка стоит рядом с числами, к которым относится: отдельной
-            страницей в конце её просто не прочитают. */}
-        {result.report.normsAreDraft ? (
-          <Text style={styles.paragraph}>
-            Нормативы расхода и трудоёмкости — предварительные и подлежат замене после проверки экспертом. Способ расчёта
-            от этого не меняется: величины пересчитываются из тех же длин и количеств.
-          </Text>
-        ) : null}
-
       </Page>
 
       {/* Таблицы расхода — отдельной страницей: на общей они упирались в край,
@@ -268,9 +260,9 @@ function MapPreview({ previewImage }: { previewImage?: string }) {
 }
 
 /** Расшифровка значков — те же контуры, что на карте и в маркерах. */
-function WorkIconLegend({ result }: { result: Pz2Result }) {
-  const items = getPz2IconKinds().flatMap((kind) => {
-    const icon = getPz2WorkIcon(kind);
+function WorkIconLegend({ result }: { result: Pz3Result }) {
+  const items = getPz3IconKinds().flatMap((kind) => {
+    const icon = getPz3WorkIcon(kind);
     // Линейные сооружения считаются по строкам, а переводы — штуками.
     const count = result.works
       .filter((work) => work.kind === kind)
@@ -287,7 +279,7 @@ function WorkIconLegend({ result }: { result: Pz2Result }) {
     <View style={mapStyles.legend}>
       {items.map((item) => (
         <View key={item.kind} style={mapStyles.legendItem}>
-          <Svg height={12} style={mapStyles.legendIcon} viewBox={`0 0 ${PZ2_ICON_GRID} ${PZ2_ICON_GRID}`} width={12}>
+          <Svg height={12} style={mapStyles.legendIcon} viewBox={`0 0 ${PZ3_ICON_GRID} ${PZ3_ICON_GRID}`} width={12}>
             {item.icon.paths.map((definition) => (
               <Path
                 d={definition}
@@ -295,7 +287,7 @@ function WorkIconLegend({ result }: { result: Pz2Result }) {
                 stroke={item.icon.color}
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={PZ2_ICON_STROKE}
+                strokeWidth={PZ3_ICON_STROKE}
               />
             ))}
           </Svg>
@@ -308,11 +300,11 @@ function WorkIconLegend({ result }: { result: Pz2Result }) {
   );
 }
 
-function Header({ section, summary }: { section: string; summary: Pz2PdfSummary }) {
+function Header({ section, summary }: { section: string; summary: Pz3PdfSummary }) {
   return (
     <View style={styles.runningHeader} fixed>
       <Text>
-        Команда «{formatRequiredValue(summary.team)}» · ПЗ2 · {formatRequiredValue(summary.lineTitle)}
+        Команда «{formatRequiredValue(summary.team)}» · ПЗ3 · {formatRequiredValue(summary.lineTitle)}
       </Text>
       <Text>{section}</Text>
     </View>
@@ -339,12 +331,36 @@ function ResourceTable({ rows }: { rows: { title: string; unit: string; amount: 
 }
 
 /** Этап работы по её принадлежности. Работа без этапа — это работа в пуле. */
-function findStageTitle(result: Pz2Result, stageId: string | null) {
+function findStageTitle(result: Pz3Result, stageId: string | null) {
   if (stageId === null) {
     return 'не разнесена';
   }
 
   return result.stages.find((stage) => stage.id === stageId)?.title ?? 'не разнесена';
+}
+
+/** Сводка для преподавателя: счёт объектов отдельно от суммарного километража. */
+export function summarizePz3Works(result: Pz3Result, labels: Record<string, string>): [string, string][] {
+  const totals = new Map<string, { count: number; lengthKm: number; pieces: number }>();
+
+  for (const work of result.works) {
+    const item = totals.get(work.kind) ?? { count: 0, lengthKm: 0, pieces: 0 };
+    item.count += 1;
+    item.lengthKm += work.lengthKm ?? 0;
+    item.pieces += work.count ?? 0;
+    totals.set(work.kind, item);
+  }
+
+  if (totals.size === 0) return [['Работы', 'Не перечислены']];
+
+  return [...totals.entries()]
+    .sort(([left], [right]) => (labels[left] ?? left).localeCompare(labels[right] ?? right, 'ru'))
+    .map(([kind, total]) => [
+      labels[kind] ?? kind,
+      kind === 'turnout'
+        ? `${formatAmount(total.pieces)} шт.`
+        : `${total.count} ${['bridge', 'tunnel', 'viaduct'].includes(kind) ? 'шт.' : 'уч.'} · ${formatAmount(total.lengthKm)} км`,
+    ]);
 }
 
 function formatAmount(value: number) {

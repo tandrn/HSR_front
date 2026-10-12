@@ -102,7 +102,7 @@ textarea {
 
 /* Флажок и радиокнопка своей ширины не меняют: «width: 100%» растягивал
    невидимое поле вокруг квадратика, и подпись отъезжала от него на полстроки —
-   колонка условий на экране 01 ПЗ2 выглядела рваной. Специфичность нулевая,
+   колонка условий на экране 01 ПЗ3 выглядела рваной. Специфичность нулевая,
    поэтому точечные правила ниже по файлу продолжают работать. */
 input:where([type='checkbox'], [type='radio']) {
   width: auto;
@@ -499,7 +499,7 @@ button:focus-visible {
   line-height: 1.45;
 }
 
-/* Шаг «Объекты трассы» ПЗ2: карта с линейкой, таблица объектов и проверка
+/* Шаг «Объекты трассы» ПЗ3: карта с линейкой, таблица объектов и проверка
    длины под ними. Раскладка та же, что у экрана карты ПЗ1, — студент попадает
    в знакомую сетку. */
 .works-step {
@@ -516,40 +516,81 @@ button:focus-visible {
   grid-row: 1 / span 2;
 }
 
-/* Ширины столбцов заданы долями, а не подобраны содержимым: иначе длинное
-   название типа объекта отжимало условия грунта до нечитаемого «Обыч». */
-.works-table {
-  table-layout: fixed;
+/* У работы много длинных условий, поэтому вместо узкой таблицы — карточки.
+   На любом размере окна подписи остаются целыми и видны выбранные эффекты. */
+.works-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
 }
 
-.works-table th:nth-child(1) {
-  width: 38%;
+.works-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(115px, 0.52fr);
+  gap: 14px 20px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
 }
 
-.works-table th:nth-child(2),
-.works-table th:nth-child(3) {
-  width: 14%;
+.works-list > div.is-overlapping {
+  background: var(--danger-bg);
 }
 
-.works-table th:nth-child(4) {
-  width: 27%;
+.works-list__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
 }
 
-.works-table th:nth-child(5) {
-  width: 7%;
+.works-list__title {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
 }
 
-.works-table select {
+.works-list__number,
+.works-list__field > span,
+.works-list__options > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.works-list__title select {
   width: 100%;
 }
 
-.works-table td {
-  vertical-align: top;
+.works-list__title small {
+  color: var(--muted);
+  line-height: 1.4;
 }
 
-/* Крестик удаления — по центру строки, как в таблицах ПЗ1. */
-.works-table .data-entry__remove-column {
-  margin: 2px auto 0;
+.works-list__field {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-width: 0;
+}
+
+.works-list__field input {
+  width: 100%;
+}
+
+.works-list__options {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+}
+
+.works-list .data-entry__remove-column {
+  flex: none;
+  margin: 18px 0 0;
 }
 
 .forecast-summary-grid dd.is-off {
@@ -562,11 +603,6 @@ button:focus-visible {
 
 /* Строка, участок которой налезает на соседний: подсветка мягкая — это
    предупреждение, а не ошибка ввода, переход дальше она не запрещает. */
-.works-table tr.is-overlapping td,
-.works-table tr.is-overlapping th {
-  background: var(--danger-bg);
-}
-
 /* По умолчанию элемент грида не сжимается уже своего содержимого, и таблица с
    минимальной шириной растягивала бы всю панель шага за край окна. Разрешаем
    колонке быть уже — прокручивается тогда сама таблица внутри своей рамки. */
@@ -634,7 +670,7 @@ button:focus-visible {
   text-align: right;
 }
 
-/* Гант ПЗ2, экран 04: строка на этап, внутри работы в порядке выполнения.
+/* Гант ПЗ3, экран 04: строка на этап, внутри работы в порядке выполнения.
    Селекторы привязаны к экрану: те же имена классов носит унаследованный
    тренажёр КСГ на экране 03, и без привязки правила смешивались — его столбики
    получали отсюда `position: absolute` и все сваливались в левый верхний угол
@@ -777,7 +813,7 @@ button:focus-visible {
   flex: 1;
 }
 
-/* ПЗ2, экран 03: учебная сеть по семи вариантам заказчика. */
+/* ПЗ3, экран 03: учебная сеть по семи вариантам заказчика. */
 .critical-path {
   min-width: 0;
 }
@@ -1001,7 +1037,7 @@ button:focus-visible {
 }
 
 /* Экран 02: этапы слева, пул работ справа — работы перетаскиваются между ними. */
-/* Раскладка по ТЗ ПЗ2 §6: этапы слева, пул работ справа — перетаскивание идёт
+/* Раскладка по ТЗ ПЗ3 §6: этапы слева, пул работ справа — перетаскивание идёт
    слева направо и обратно. Обе панели вверху: карта над ними отжимала их под
    сгиб, и работу приходилось тащить с прокруткой. */
 .stages-step {
@@ -1291,13 +1327,18 @@ button:focus-visible {
   text-align: right;
 }
 
-/* Условия грунта — галочками: у участка их может быть сразу несколько. */
+/* Опции работы: эффект виден рядом с выбранным условием. */
 .soil-conditions {
   display: grid;
   gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.works-list .soil-conditions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
 }
 
 .soil-conditions label {
@@ -1307,6 +1348,14 @@ button:focus-visible {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.soil-conditions small {
+  display: block;
+  margin: 3px 0 4px 19px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 /* Станции ПЗ1 под картой: по ним студент понимает, между какими точками
@@ -2183,7 +2232,7 @@ input.is-invalid {
 }
 
 /* Флажки в таблице шириной поля ввода не меряются: их ширина своя, иначе
-   квадратик отрывается от подписи (колонка условий на экране 01 ПЗ2). */
+   квадратик отрывается от подписи (колонка условий на экране 01 ПЗ3). */
 .input-table input:not([type='checkbox']):not([type='radio']) {
   width: min(150px, 100%);
 }
@@ -2639,7 +2688,7 @@ input.is-invalid {
   align-content: start;
 }
 
-/* Итог ПЗ2: левая колонка живёт собственным вертикальным потоком. Если
+/* Итог ПЗ3: левая колонка живёт собственным вертикальным потоком. Если
    оставить три карточки прямыми детьми двухколоночной сетки, высокий отчёт
    справа задаёт высоту первой строки и отталкивает экспорт далеко вниз. */
 .result-layout {
@@ -2723,7 +2772,7 @@ input.is-invalid {
   margin: 0;
 }
 
-/* На итоговом экране ПЗ2 левая колонка заканчивается на одной линии с
+/* На итоговом экране ПЗ3 левая колонка заканчивается на одной линии с
    отчётом. Свободное место получает функциональная карточка экспорта, а
    подтверждение сохранения остаётся у её нижнего края. */
 .result-layout__aside .result-actions {
@@ -2865,14 +2914,6 @@ input.is-invalid {
   .works-step,
   .stages-step {
     grid-template-rows: none;
-  }
-
-  /* Таблица работ не сжимается дальше читаемого, а прокручивается вбок внутри
-     своей рамки: на узком экране доли столбцов схлопывали заголовки в
-     «КОЛИЧЕСТВОУСЛОВИЯ», а список типа работы обрезался на середине слова.
-     Горизонтальная прокрутка здесь — та же .table-scroll, что и в ПЗ1. */
-  .works-table {
-    min-width: 680px;
   }
 
   .station-grid,
@@ -3088,7 +3129,7 @@ input.is-invalid {
   }
 }
 
-/* Упражнение на выравнивание загрузки, экран 03 ПЗ2.
+/* Упражнение на выравнивание загрузки, экран 03 ПЗ3.
    Строки работ и гистограмма живут в одной сетке дней: столбик под работой
    должен приходиться на тот же день, что и сама работа, иначе связь «подвинул
    работу — просела гора» не читается. Общий отступ слева держит колонку

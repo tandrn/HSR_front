@@ -2,41 +2,42 @@ import { createBridge } from '../../bridge/io';
 import type {
   BridgeSchema,
   ModulePosition,
-  Pz2CriticalPathAnswer,
-  Pz2PlanResult,
-  Pz2ReportResult,
-  Pz2Result,
-  Pz2Stage,
-  Pz2Work,
+  Pz3CriticalPathAnswer,
+  Pz3PlanResult,
+  Pz3ReportResult,
+  Pz3Result,
+  Pz3Stage,
+  Pz3Work,
 } from '../../bridge/schema';
 import { buildRoutePointsBySegment, computeRouteLineMetrics } from '../../shared/lib/routeGeometry';
 import { calculateCriticalPath, checkCriticalPathSubmission, createEmptyCriticalPathSubmission } from '../../shared/lib/criticalPath';
 import type { CriticalPathSubmission, CriticalPathTimingInput } from '../../shared/lib/criticalPath';
 import { createRouteRulerFromSegments, projectOntoRoute } from '../../shared/lib/routeRuler';
 import type { RouteRuler } from '../../shared/lib/routeRuler';
-import { pz2NetworkExercises } from './networkExercises';
-import { getPz2Leveling } from './leveling';
-import { getPz2WorkIcon } from './workIcons';
-import { getPz2Plan, getPz2Report } from './plan';
+import { pz3NetworkExercises } from './networkExercises';
+import { getPz3Option } from './options';
+import { getPz3Leveling } from './leveling';
+import { getPz3WorkIcon } from './workIcons';
+import { getPz3Plan, getPz3Report } from './plan';
 import type {
-  Pz2Draft,
-  Pz2RouteSpan,
-  Pz2StationMark,
-  Pz2SoilCondition,
-  Pz2RoutePointMark,
-  Pz2RouteSource,
-  Pz2SegmentMark,
-  Pz2StageDraft,
-  Pz2WorkDraft,
-  Pz2WorkKind,
-  Pz2WorkMark,
-  Pz2WorkMeasure,
+  Pz3Draft,
+  Pz3RouteSpan,
+  Pz3StationMark,
+  Pz3SoilCondition,
+  Pz3RoutePointMark,
+  Pz3RouteSource,
+  Pz3SegmentMark,
+  Pz3StageDraft,
+  Pz3WorkDraft,
+  Pz3WorkKind,
+  Pz3WorkMark,
+  Pz3WorkMeasure,
 } from './types';
 
-interface Pz2WorkKindInfo {
-  id: Pz2WorkKind;
+interface Pz3WorkKindInfo {
+  id: Pz3WorkKind;
   label: string;
-  measure: Pz2WorkMeasure;
+  measure: Pz3WorkMeasure;
   /** Короткое пояснение со слов заказчика — студенту, чтобы не гадать по названию. */
   hint: string;
 }
@@ -49,7 +50,7 @@ interface Pz2WorkKindInfo {
  * «они потом будут чуть иначе считаться». Пока разницы в расчёте нет, но
  * порядок в списке сохраняем — по нему потом будет проще расходиться.
  */
-export const pz2WorkKinds: Pz2WorkKindInfo[] = [
+export const pz3WorkKinds: Pz3WorkKindInfo[] = [
   {
     id: 'existingLineRepair',
     label: 'Ремонт существующей линии',
@@ -85,7 +86,7 @@ export const pz2WorkKinds: Pz2WorkKindInfo[] = [
 ];
 
 
-export const pz2SoilConditions: { id: Pz2SoilCondition; label: string; hint: string }[] = [
+export const pz3SoilConditions: { id: Pz3SoilCondition; label: string; hint: string }[] = [
   {
     id: 'weakSoil',
     label: 'Слабые грунты',
@@ -97,28 +98,28 @@ export const pz2SoilConditions: { id: Pz2SoilCondition; label: string; hint: str
 /**
  * Допуск проверки длины.
  *
- * ВРЕМЕННОЕ ЗНАЧЕНИЕ: заказчик допуск не назвал (ТЗ ПЗ2 в-5). Полкилометра
+ * ВРЕМЕННОЕ ЗНАЧЕНИЕ: заказчик допуск не назвал (ТЗ ПЗ3 в-5). Полкилометра
  * взято как «точнее линейкой всё равно не намеряешь». На поведение это влияет
  * только на подпись «сошлось»: переход дальше не блокируется ни при каком
  * расхождении, как и требует ТЗ до ответа на в-5.
  */
-export const PZ2_LENGTH_TOLERANCE_KM = 0.5;
+export const PZ3_LENGTH_TOLERANCE_KM = 0.5;
 /** Насколько участки могут перекрыться, чтобы это ещё считалось стыком, а не наложением. */
-export const PZ2_SPAN_TOUCH_TOLERANCE_KM = 0.05;
+export const PZ3_SPAN_TOUCH_TOLERANCE_KM = 0.05;
 
-export function getPz2WorkKind(kind: Pz2WorkKind) {
-  return pz2WorkKinds.find((item) => item.id === kind) ?? pz2WorkKinds[0];
+export function getPz3WorkKind(kind: Pz3WorkKind) {
+  return pz3WorkKinds.find((item) => item.id === kind) ?? pz3WorkKinds[0];
 }
 
 /**
- * Черновик ПЗ2, при загрузке файла — с уже введёнными значениями.
+ * Черновик ПЗ3, при загрузке файла — с уже введёнными значениями.
  *
  * Заказчик просил дословно: файл должен открывать тот же экран «с уже
  * введёнными значениями». В мост числа уходят числами, а поля ввода в проекте
  * работают со строками, поэтому здесь обратный перевод.
  */
-export function createInitialPz2Draft(importedBridge?: BridgeSchema | null): Pz2Draft {
-  const saved = importedBridge?.completed?.pz2;
+export function createInitialPz3Draft(importedBridge?: BridgeSchema | null): Pz3Draft {
+  const saved = importedBridge?.completed?.pz3;
 
   if (!saved) {
     return { works: [], stages: [], criticalPathAnswers: {}, totalWorkers: '', workersByStage: {}, rulerMarksKm: [] };
@@ -128,8 +129,8 @@ export function createInitialPz2Draft(importedBridge?: BridgeSchema | null): Pz2
     works: saved.works.map((work) => ({
       id: work.id,
       kind: work.kind,
-      lengthKm: work.lengthKm === null ? '' : formatPz2InputNumber(work.lengthKm),
-      count: work.count === null ? '' : formatPz2InputNumber(work.count),
+      lengthKm: work.lengthKm === null ? '' : formatPz3InputNumber(work.lengthKm),
+      count: work.count === null ? '' : formatPz3InputNumber(work.count),
       conditions: work.conditions,
       stageId: work.stageId,
       ...(work.span ? { span: work.span } : {}),
@@ -138,9 +139,9 @@ export function createInitialPz2Draft(importedBridge?: BridgeSchema | null): Pz2
     stages: saved.stages.map((stage) => ({ id: stage.id, title: stage.title, order: stage.order })),
     criticalPathAnswers: Object.fromEntries(saved.criticalPath.map((answer) => [answer.exerciseId, restoreCriticalPathAnswer(answer)])),
     ...(saved.levelingShifts ? { levelingShifts: saved.levelingShifts } : {}),
-    totalWorkers: saved.plan.totalWorkers > 0 ? formatPz2InputNumber(saved.plan.totalWorkers) : '',
+    totalWorkers: saved.plan.totalWorkers > 0 ? formatPz3InputNumber(saved.plan.totalWorkers) : '',
     workersByStage: Object.fromEntries(
-      Object.entries(saved.plan.workersByStage).map(([stageId, workers]) => [stageId, formatPz2InputNumber(workers)]),
+      Object.entries(saved.plan.workersByStage).map(([stageId, workers]) => [stageId, formatPz3InputNumber(workers)]),
     ),
     // Отметки линейки не сохраняются: это незаконченное измерение, а не
     // результат. Готовые участки лежат у работ.
@@ -152,7 +153,7 @@ export function createInitialPz2Draft(importedBridge?: BridgeSchema | null): Pz2
 }
 
 /** Старые файлы хранят только строку пути; новый ответ восстанавливается целиком. */
-function restoreCriticalPathAnswer(answer: Pz2CriticalPathAnswer): CriticalPathSubmission {
+function restoreCriticalPathAnswer(answer: Pz3CriticalPathAnswer): CriticalPathSubmission {
   const saved = answer.submission;
   if (!saved || typeof saved !== 'object') {
     return { ...createEmptyCriticalPathSubmission(), paths: answer.answer };
@@ -181,20 +182,20 @@ function restoreCriticalPathAnswer(answer: Pz2CriticalPathAnswer): CriticalPathS
 }
 
 /** Число из моста обратно в поле ввода: запятая как разделитель, без хвоста нулей. */
-function formatPz2InputNumber(value: number): string {
+function formatPz3InputNumber(value: number): string {
   return String(Number(value.toFixed(2))).replace('.', ',');
 }
 
-export function createPz2Work(
-  kind: Pz2WorkKind = 'existingLineRepair',
+export function createPz3Work(
+  kind: Pz3WorkKind = 'existingLineRepair',
   lengthKm = '',
-  span?: Pz2RouteSpan,
-): Pz2WorkDraft {
+  span?: Pz3RouteSpan,
+): Pz3WorkDraft {
   return {
     id: `work-${Math.random().toString(36).slice(2, 10)}`,
     kind,
     lengthKm,
-    count: getPz2WorkKind(kind).measure === 'count' ? '1' : '',
+    count: getPz3WorkKind(kind).measure === 'count' ? '1' : '',
     conditions: [],
     stageId: null,
     span,
@@ -209,7 +210,7 @@ export function createPz2Work(
  * пролегли исправленные километры, мы не знаем. Поэтому привязка к карте
  * снимается — лучше не показать участок, чем показать неверный.
  */
-export function setPz2WorkLength(work: Pz2WorkDraft, lengthKm: string): Pz2WorkDraft {
+export function setPz3WorkLength(work: Pz3WorkDraft, lengthKm: string): Pz3WorkDraft {
   if (work.span && lengthKm !== work.lengthKm) {
     const { span, ...rest } = work;
     void span;
@@ -221,7 +222,7 @@ export function setPz2WorkLength(work: Pz2WorkDraft, lengthKm: string): Pz2WorkD
 }
 
 /** Условие включают и выключают галочкой, поэтому переключатель, а не замена. */
-export function togglePz2SoilCondition(work: Pz2WorkDraft, condition: Pz2SoilCondition): Pz2WorkDraft {
+export function togglePz3SoilCondition(work: Pz3WorkDraft, condition: Pz3SoilCondition): Pz3WorkDraft {
   const conditions = work.conditions.includes(condition)
     ? work.conditions.filter((item) => item !== condition)
     : [...work.conditions, condition];
@@ -229,14 +230,14 @@ export function togglePz2SoilCondition(work: Pz2WorkDraft, condition: Pz2SoilCon
   return { ...work, conditions };
 }
 
-export function renamePz2Stage(draft: Pz2Draft, stageId: string, title: string): Pz2Draft {
+export function renamePz3Stage(draft: Pz3Draft, stageId: string, title: string): Pz3Draft {
   return {
     ...draft,
     stages: draft.stages.map((stage) => (stage.id === stageId ? { ...stage, title } : stage)),
   };
 }
 
-export function createPz2Stage(title: string, order: number): Pz2StageDraft {
+export function createPz3Stage(title: string, order: number): Pz3StageDraft {
   return { id: `stage-${Math.random().toString(36).slice(2, 10)}`, title: title.trim(), order };
 }
 
@@ -248,9 +249,9 @@ export function createPz2Stage(title: string, order: number): Pz2StageDraft {
  * молчит. Считаем только намеренные линейкой участки — у ручных строк места на
  * трассе нет, и сказать о них нечего.
  */
-export function findPz2OverlappingWorks(draft: Pz2Draft): string[] {
+export function findPz3OverlappingWorks(draft: Pz3Draft): string[] {
   const measured = draft.works
-    .filter((object) => object.span && getPz2WorkKind(object.kind).measure === 'length')
+    .filter((object) => object.span && getPz3WorkKind(object.kind).measure === 'length')
     .map((object) => ({
       id: object.id,
       fromKm: Math.min(object.span!.fromKm, object.span!.toKm),
@@ -265,7 +266,7 @@ export function findPz2OverlappingWorks(draft: Pz2Draft): string[] {
     const current = measured[index];
 
     // Стык встык — не наложение: конец одного участка совпадает с началом другого.
-    if (current.fromKm < previous.toKm - PZ2_SPAN_TOUCH_TOLERANCE_KM) {
+    if (current.fromKm < previous.toKm - PZ3_SPAN_TOUCH_TOLERANCE_KM) {
       overlapping.add(previous.id);
       overlapping.add(current.id);
     }
@@ -282,32 +283,33 @@ export function findPz2OverlappingWorks(draft: Pz2Draft): string[] {
  * ошибкой «укажите количество», хотя студент ничего не стирал. Намеренную
  * длину при этом не трогаем: вернёт тип обратно — вернётся и длина.
  */
-export function changePz2WorkKind(
-  object: Pz2WorkDraft,
-  kind: Pz2WorkKind,
+export function changePz3WorkKind(
+  object: Pz3WorkDraft,
+  kind: Pz3WorkKind,
   routeKm = 0,
   initialPositionKm = routeKm / 2,
-): Pz2WorkDraft {
-  const needsCount = getPz2WorkKind(kind).measure === 'count';
+): Pz3WorkDraft {
+  const needsCount = getPz3WorkKind(kind).measure === 'count';
 
   return {
     ...object,
     kind,
+    conditions: object.conditions.filter((condition) => getPz3Option(condition, kind) !== undefined),
     count: needsCount && !object.count.trim() ? '1' : object.count,
-    ...(getPz2WorkIcon(kind) && (kind === 'turnout' || !object.span) && !Number.isFinite(object.positionKm)
+    ...(getPz3WorkIcon(kind) && (kind === 'turnout' || !object.span) && !Number.isFinite(object.positionKm)
       ? { positionKm: Math.max(0, Math.min(routeKm, initialPositionKm)) }
       : {}),
   };
 }
 
 /** Первые значки разводим по трассе, чтобы новые объекты не закрывали друг друга. */
-export function getPz2DefaultWorkPosition(index: number, routeKm: number): number {
+export function getPz3DefaultWorkPosition(index: number, routeKm: number): number {
   return routeKm * ((index % 4) + 1) / 5;
 }
 
 /** Перетаскивание переводит координату маркера в километраж и удерживает его на трассе. */
-export function setPz2WorkPosition(work: Pz2WorkDraft, distanceKm: number, routeKm: number): Pz2WorkDraft {
-  if (!getPz2WorkIcon(work.kind) || (work.kind !== 'turnout' && work.span) || !Number.isFinite(distanceKm)) {
+export function setPz3WorkPosition(work: Pz3WorkDraft, distanceKm: number, routeKm: number): Pz3WorkDraft {
+  if (!getPz3WorkIcon(work.kind) || (work.kind !== 'turnout' && work.span) || !Number.isFinite(distanceKm)) {
     return work;
   }
 
@@ -315,10 +317,10 @@ export function setPz2WorkPosition(work: Pz2WorkDraft, distanceKm: number, route
 }
 
 /**
- * Трасса из ПЗ1. Без загруженного файла ПЗ2 мерить нечего — это не ошибка,
+ * Трасса из ПЗ1. Без загруженного файла ПЗ3 мерить нечего — это не ошибка,
  * а нормальное состояние до того, как студент принесёт свой JSON-мост.
  */
-export function getPz2RouteSource(bridge: BridgeSchema | null | undefined): Pz2RouteSource {
+export function getPz3RouteSource(bridge: BridgeSchema | null | undefined): Pz3RouteSource {
   const pz1 = bridge?.completed?.pz1;
 
   return {
@@ -337,7 +339,7 @@ export function getPz2RouteSource(bridge: BridgeSchema | null | undefined): Pz2R
  * линейкой, что и участки, — иначе цифры на карте и в таблице разошлись бы.
  * Порядок — по трассе, а не по алфавиту меток.
  */
-export function getPz2StationMarks(source: Pz2RouteSource, ruler: RouteRuler): Pz2StationMark[] {
+export function getPz3StationMarks(source: Pz3RouteSource, ruler: RouteRuler): Pz3StationMark[] {
   return source.stations
     .flatMap((station) => {
       const position = projectOntoRoute(ruler, { lat: station.lat, lon: station.lng });
@@ -365,7 +367,7 @@ export function getPz2StationMarks(source: Pz2RouteSource, ruler: RouteRuler): P
  * Длину каждого сегмента берём у ПЗ1, а не пересчитываем по ломаной: иначе
  * сумма намеренного не сойдётся с эталоном, с которым её же и сверяют.
  */
-export function createPz2Ruler(source: Pz2RouteSource): RouteRuler {
+export function createPz3Ruler(source: Pz3RouteSource): RouteRuler {
   if (!source.routeLine) {
     return createRouteRulerFromSegments([]);
   }
@@ -381,7 +383,7 @@ export function createPz2Ruler(source: Pz2RouteSource): RouteRuler {
   );
 }
 
-export interface Pz2LengthCheck {
+export interface Pz3LengthCheck {
   measuredKm: number;
   routeKm: number;
   differenceKm: number;
@@ -398,13 +400,13 @@ export interface Pz2LengthCheck {
  * Считаются только объекты с длиной: стрелки меряются штуками и в длину трассы
  * не укладываются.
  */
-export function getPz2LengthCheck(draft: Pz2Draft, routeKm: number): Pz2LengthCheck {
+export function getPz3LengthCheck(draft: Pz3Draft, routeKm: number): Pz3LengthCheck {
   const measuredKm = draft.works.reduce((sum, object) => {
-    if (getPz2WorkKind(object.kind).measure !== 'length') {
+    if (getPz3WorkKind(object.kind).measure !== 'length') {
       return sum;
     }
 
-    return sum + (parsePz2Number(object.lengthKm) ?? 0);
+    return sum + (parsePz3Number(object.lengthKm) ?? 0);
   }, 0);
 
   const differenceKm = measuredKm - routeKm;
@@ -413,18 +415,18 @@ export function getPz2LengthCheck(draft: Pz2Draft, routeKm: number): Pz2LengthCh
     return { measuredKm, routeKm, differenceKm, status: 'empty' };
   }
 
-  if (Math.abs(differenceKm) <= PZ2_LENGTH_TOLERANCE_KM) {
+  if (Math.abs(differenceKm) <= PZ3_LENGTH_TOLERANCE_KM) {
     return { measuredKm, routeKm, differenceKm, status: 'match' };
   }
 
   return { measuredKm, routeKm, differenceKm, status: differenceKm < 0 ? 'short' : 'over' };
 }
 
-export function validatePz2Work(object: Pz2WorkDraft): string | null {
-  const measure = getPz2WorkKind(object.kind).measure;
+export function validatePz3Work(object: Pz3WorkDraft): string | null {
+  const measure = getPz3WorkKind(object.kind).measure;
 
   if (measure === 'count') {
-    const count = parsePz2Number(object.count);
+    const count = parsePz3Number(object.count);
 
     if (count === null) {
       return 'Укажите количество';
@@ -433,7 +435,7 @@ export function validatePz2Work(object: Pz2WorkDraft): string | null {
     return count > 0 && Number.isInteger(count) ? null : 'Количество — целое число больше нуля';
   }
 
-  const lengthKm = parsePz2Number(object.lengthKm);
+  const lengthKm = parsePz3Number(object.lengthKm);
 
   if (lengthKm === null) {
     return 'Укажите длину';
@@ -442,12 +444,12 @@ export function validatePz2Work(object: Pz2WorkDraft): string | null {
   return lengthKm > 0 ? null : 'Длина должна быть больше нуля';
 }
 
-export function isPz2WorksComplete(draft: Pz2Draft) {
-  return draft.works.length > 0 && draft.works.every((object) => validatePz2Work(object) === null);
+export function isPz3WorksComplete(draft: Pz3Draft) {
+  return draft.works.length > 0 && draft.works.every((object) => validatePz3Work(object) === null);
 }
 
 /** Числовой ввод в стиле проекта: запятая как разделитель, пробелы разрядов игнорируются. */
-export function parsePz2Number(value: string): number | null {
+export function parsePz3Number(value: string): number | null {
   const normalized = value.replace(/[\s ]/g, '').replace(',', '.');
 
   if (!normalized) {
@@ -464,7 +466,7 @@ export function parsePz2Number(value: string): number | null {
  * Иначе в одной панели рядом стоят «1 022,53» и «711,5», и числа выглядят
  * посчитанными с разной точностью, хотя точность одна.
  */
-export function formatPz2Km(value: number) {
+export function formatPz3Km(value: number) {
   const format = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return `${format.format(value)} км`;
@@ -477,17 +479,17 @@ export function formatPz2Km(value: number) {
  * частично. Заказчик числа этапов не ограничивал (в-9), поэтому проверяется
  * только то, что они есть и что работы разложены.
  */
-export function isPz2StagesComplete(draft: Pz2Draft) {
+export function isPz3StagesComplete(draft: Pz3Draft) {
   return draft.stages.length > 0 && draft.works.length > 0 && draft.works.every((work) => work.stageId !== null);
 }
 
 /**
  * Точки линии трассы из ПЗ1 — те же, что студент ставил в первом задании.
  *
- * Номер сохраняется по порядку вершин: на карте ПЗ2 точка подписана тем же
+ * Номер сохраняется по порядку вершин: на карте ПЗ3 точка подписана тем же
  * числом, что и в ПЗ1, иначе два задания показывали бы одну трассу по-разному.
  */
-export function getPz2RoutePointMarks(source: Pz2RouteSource, ruler: RouteRuler): Pz2RoutePointMark[] {
+export function getPz3RoutePointMarks(source: Pz3RouteSource, ruler: RouteRuler): Pz3RoutePointMark[] {
   const vertices = source.routeLine?.vertices ?? [];
 
   return vertices.flatMap((vertex, index) => {
@@ -516,7 +518,7 @@ export function getPz2RoutePointMarks(source: Pz2RouteSource, ruler: RouteRuler)
  * обязаны совпадать. Километр начала нужен, чтобы студент понимал, какой
  * кусок трассы он сейчас меряет.
  */
-export function getPz2SegmentMarks(source: Pz2RouteSource): Pz2SegmentMark[] {
+export function getPz3SegmentMarks(source: Pz3RouteSource): Pz3SegmentMark[] {
   if (!source.routeLine) {
     return [];
   }
@@ -527,7 +529,7 @@ export function getPz2SegmentMarks(source: Pz2RouteSource): Pz2SegmentMark[] {
   return source.routeLine.segments.map((segment, index) => {
     const measured = metrics.segments.find((item) => item.segmentId === segment.id);
     const lengthKm = measured?.arcLengthKm ?? 0;
-    const mark: Pz2SegmentMark = {
+    const mark: Pz3SegmentMark = {
       id: segment.id,
       number: index + 1,
       lengthKm,
@@ -552,23 +554,23 @@ export function getPz2SegmentMarks(source: Pz2RouteSource): Pz2SegmentMark[] {
  * У измеренных сооружений значок ставится посередине участка. У ручной строки
  * он появляется на трассе и остаётся подвижным, пока студент не задаст место.
  */
-export function getPz2WorkMarks(draft: Pz2Draft, routeKm = 0): Pz2WorkMark[] {
-  return draft.works.flatMap<Pz2WorkMark>((work, index) => {
-    const icon = getPz2WorkIcon(work.kind);
+export function getPz3WorkMarks(draft: Pz3Draft, routeKm = 0): Pz3WorkMark[] {
+  return draft.works.flatMap<Pz3WorkMark>((work, index) => {
+    const icon = getPz3WorkIcon(work.kind);
 
     if (!icon) {
       return [];
     }
 
     if (work.kind === 'turnout') {
-      const count = parsePz2Number(work.count) ?? 0;
-      const distanceKm = Number.isFinite(work.positionKm) ? work.positionKm! : getPz2DefaultWorkPosition(index, routeKm);
+      const count = parsePz3Number(work.count) ?? 0;
+      const distanceKm = Number.isFinite(work.positionKm) ? work.positionKm! : getPz3DefaultWorkPosition(index, routeKm);
 
       return [{
         id: work.id,
         kind: work.kind,
         label: icon.label,
-        title: `Стрелочный перевод 1/25: ${count} шт. — ${formatPz2Km(distanceKm)} от начала трассы`,
+        title: `Стрелочный перевод 1/25: ${count} шт. — ${formatPz3Km(distanceKm)} от начала трассы`,
         distanceKm,
         count,
         draggable: true,
@@ -576,14 +578,14 @@ export function getPz2WorkMarks(draft: Pz2Draft, routeKm = 0): Pz2WorkMark[] {
     }
 
     if (!work.span) {
-      const distanceKm = Number.isFinite(work.positionKm) ? work.positionKm! : getPz2DefaultWorkPosition(index, routeKm);
-      const lengthKm = parsePz2Number(work.lengthKm);
+      const distanceKm = Number.isFinite(work.positionKm) ? work.positionKm! : getPz3DefaultWorkPosition(index, routeKm);
+      const lengthKm = parsePz3Number(work.lengthKm);
 
       return [{
         id: work.id,
         kind: work.kind,
         label: icon.label,
-        title: `${getPz2WorkKind(work.kind).label}${lengthKm !== null ? `: ${formatPz2Km(lengthKm)}` : ''} — ${formatPz2Km(distanceKm)} от начала трассы`,
+        title: `${getPz3WorkKind(work.kind).label}${lengthKm !== null ? `: ${formatPz3Km(lengthKm)}` : ''} — ${formatPz3Km(distanceKm)} от начала трассы`,
         distanceKm,
         draggable: true,
       }];
@@ -597,7 +599,7 @@ export function getPz2WorkMarks(draft: Pz2Draft, routeKm = 0): Pz2WorkMark[] {
         id: work.id,
         kind: work.kind,
         label: icon.label,
-        title: `${getPz2WorkKind(work.kind).label}: ${formatPz2Km(to - from)}`,
+        title: `${getPz3WorkKind(work.kind).label}: ${formatPz3Km(to - from)}`,
         // Значок ставится посередине участка: у концов он налезал бы на отметки
         // соседних работ и на станции.
         distanceKm: (from + to) / 2,
@@ -615,10 +617,10 @@ export function getPz2WorkMarks(draft: Pz2Draft, routeKm = 0): Pz2WorkMark[] {
  * насыщенности. Когда этапов больше, цвета идут по кругу: семь-девять этапов,
  * о которых говорил заказчик, помещаются без повторов.
  */
-export const pz2StageColors = ['#003d84', '#08a696', '#e0182d', '#8a5cf5', '#e07b18', '#0f6e56', '#c0392b'];
+export const pz3StageColors = ['#003d84', '#08a696', '#e0182d', '#8a5cf5', '#e07b18', '#0f6e56', '#c0392b'];
 
-export function getPz2StageColor(order: number) {
-  return pz2StageColors[order % pz2StageColors.length];
+export function getPz3StageColor(order: number) {
+  return pz3StageColors[order % pz3StageColors.length];
 }
 
 /**
@@ -628,14 +630,14 @@ export function getPz2StageColor(order: number) {
  * трассе нет, и показать их на карте нечем — вместо догадки экран честно
  * говорит, сколько работ осталось без участка.
  */
-export function getPz2StageSpans(draft: Pz2Draft) {
+export function getPz3StageSpans(draft: Pz3Draft) {
   return draft.stages.map((stage) => {
-    const works = getPz2StageWorks(draft, stage.id);
+    const works = getPz3StageWorks(draft, stage.id);
 
     return {
       id: stage.id,
       title: stage.title,
-      color: getPz2StageColor(stage.order),
+      color: getPz3StageColor(stage.order),
       spans: works.flatMap((work) => (work.span ? [work.span] : [])),
       worksWithoutSpan: works.filter((work) => !work.span).length,
     };
@@ -658,7 +660,7 @@ export function pluralWorks(count: number) {
 }
 
 /** Работы этапа в порядке их появления. Пул — этап с id null. */
-export function getPz2StageWorks(draft: Pz2Draft, stageId: string | null) {
+export function getPz3StageWorks(draft: Pz3Draft, stageId: string | null) {
   return draft.works.filter((work) => work.stageId === stageId);
 }
 
@@ -667,7 +669,7 @@ export function getPz2StageWorks(draft: Pz2Draft, stageId: string | null) {
  * замена принадлежности, а не добавление в список — двух этапов у неё быть не
  * может (DoD экрана 2).
  */
-export function assignPz2WorkToStage(draft: Pz2Draft, workId: string, stageId: string | null): Pz2Draft {
+export function assignPz3WorkToStage(draft: Pz3Draft, workId: string, stageId: string | null): Pz3Draft {
   return {
     ...draft,
     works: draft.works.map((work) => (work.id === workId ? { ...work, stageId } : work)),
@@ -678,7 +680,7 @@ export function assignPz2WorkToStage(draft: Pz2Draft, workId: string, stageId: s
  * Удаление этапа: его работы возвращаются в пул, а не исчезают вместе с ним.
  * Порядок оставшихся этапов пересчитывается, чтобы не осталось дыр.
  */
-export function removePz2Stage(draft: Pz2Draft, stageId: string): Pz2Draft {
+export function removePz3Stage(draft: Pz3Draft, stageId: string): Pz3Draft {
   // Люди, назначенные удалённому этапу, освобождаются вместе с ним: иначе они
   // остались бы «распределены» в никуда и не сошлись бы с общим числом.
   const { [stageId]: removedWorkers, ...workersByStage } = draft.workersByStage;
@@ -701,7 +703,7 @@ export function removePz2Stage(draft: Pz2Draft, stageId: string): Pz2Draft {
  * десятое: «1-3-5», «1, 3, 5» и «1 3 5» — один и тот же ответ. Сравниваются
  * только сами номера и их порядок, порядок значим: путь идёт от начала к концу.
  */
-export function checkPz2CriticalPath(answer: string, reference: string[]): boolean {
+export function checkPz3CriticalPath(answer: string, reference: string[]): boolean {
   const parsed = splitPathNodes(answer);
 
   return parsed.length > 0 && parsed.join('-') === reference.map((node) => node.trim()).join('-');
@@ -720,17 +722,17 @@ export function splitPathNodes(answer: string): string[] {
  * Ровность загрузки не проверяется: это предмет упражнения, а не условие
  * перехода — критерий качества заказчик словами задал, числом нет.
  */
-export function isPz2PlanComplete(draft: Pz2Draft) {
-  const total = parsePz2Number(draft.totalWorkers) ?? 0;
+export function isPz3PlanComplete(draft: Pz3Draft) {
+  const total = parsePz3Number(draft.totalWorkers) ?? 0;
 
   if (total <= 0 || draft.stages.length === 0) {
     return false;
   }
 
-  return draft.stages.every((stage) => (parsePz2Number(draft.workersByStage[stage.id] ?? '') ?? 0) > 0);
+  return draft.stages.every((stage) => (parsePz3Number(draft.workersByStage[stage.id] ?? '') ?? 0) > 0);
 }
 
-export interface Pz2ExercisesProgress {
+export interface Pz3ExercisesProgress {
   solvedCriticalPath: number;
   totalCriticalPath: number;
   levelingSolved: boolean;
@@ -742,8 +744,8 @@ export interface Pz2ExercisesProgress {
  * критическому пути и снимает перегрузку в задаче на выравнивание.
  * Дополнительные поздние сроки и письменное объяснение остаются добровольными.
  */
-export function getPz2ExercisesProgress(draft: Pz2Draft): Pz2ExercisesProgress {
-  const solvedCriticalPath = pz2NetworkExercises.filter((exercise) => {
+export function getPz3ExercisesProgress(draft: Pz3Draft): Pz3ExercisesProgress {
+  const solvedCriticalPath = pz3NetworkExercises.filter((exercise) => {
     const submission = draft.criticalPathAnswers[exercise.id];
 
     return Boolean(
@@ -751,8 +753,8 @@ export function getPz2ExercisesProgress(draft: Pz2Draft): Pz2ExercisesProgress {
       && checkCriticalPathSubmission(submission, calculateCriticalPath(exercise.works)).coreCorrect,
     );
   }).length;
-  const levelingSolved = getPz2Leveling(draft.levelingShifts ?? {}).isSolved;
-  const totalCriticalPath = pz2NetworkExercises.length;
+  const levelingSolved = getPz3Leveling(draft.levelingShifts ?? {}).isSolved;
+  const totalCriticalPath = pz3NetworkExercises.length;
 
   return {
     solvedCriticalPath,
@@ -762,39 +764,39 @@ export function getPz2ExercisesProgress(draft: Pz2Draft): Pz2ExercisesProgress {
   };
 }
 
-export function isPz2ExercisesComplete(draft: Pz2Draft) {
-  return getPz2ExercisesProgress(draft).isComplete;
+export function isPz3ExercisesComplete(draft: Pz3Draft) {
+  return getPz3ExercisesProgress(draft).isComplete;
 }
 
 /** Шаги задания стабильными идентификаторами: позиция в файле не зависит от порядка. */
-export const pz2StepIds = ['works', 'stages', 'exercises', 'plan'] as const;
+export const pz3StepIds = ['works', 'stages', 'exercises', 'plan'] as const;
 
-export type Pz2StepId = (typeof pz2StepIds)[number];
+export type Pz3StepId = (typeof pz3StepIds)[number];
 
 /**
- * Итог ПЗ2 для моста.
+ * Итог ПЗ3 для моста.
  *
  * Строки ввода превращаются в числа здесь и только здесь: дальше по цепочке
  * заданий пойдут посчитанные величины, а не то, что студент набрал в поле.
  */
-export function createPz2Result(draft: Pz2Draft, routeLengthKm: number): Pz2Result {
+export function createPz3Result(draft: Pz3Draft, routeLengthKm: number): Pz3Result {
   return {
-    works: draft.works.map((work): Pz2Work => {
-      const measure = getPz2WorkKind(work.kind).measure;
+    works: draft.works.map((work): Pz3Work => {
+      const measure = getPz3WorkKind(work.kind).measure;
 
       return {
         id: work.id,
         kind: work.kind,
-        lengthKm: measure === 'length' ? parsePz2Number(work.lengthKm) : null,
-        count: measure === 'count' ? parsePz2Number(work.count) : null,
+        lengthKm: measure === 'length' ? parsePz3Number(work.lengthKm) : null,
+        count: measure === 'count' ? parsePz3Number(work.count) : null,
         stageId: work.stageId,
         conditions: work.conditions,
         ...(work.span ? { span: work.span } : {}),
         ...(Number.isFinite(work.positionKm) ? { positionKm: work.positionKm } : {}),
       };
     }),
-    stages: draft.stages.map((stage): Pz2Stage => ({ id: stage.id, title: stage.title, order: stage.order })),
-    criticalPath: pz2NetworkExercises.map((exercise) => {
+    stages: draft.stages.map((stage): Pz3Stage => ({ id: stage.id, title: stage.title, order: stage.order })),
+    criticalPath: pz3NetworkExercises.map((exercise) => {
       const submission = draft.criticalPathAnswers[exercise.id] ?? createEmptyCriticalPathSubmission();
       return {
         exerciseId: exercise.id,
@@ -803,23 +805,23 @@ export function createPz2Result(draft: Pz2Draft, routeLengthKm: number): Pz2Resu
         submission,
       };
     }),
-    plan: createPz2PlanResult(draft),
-    report: createPz2ReportResult(draft),
+    plan: createPz3PlanResult(draft),
+    report: createPz3ReportResult(draft),
     ...(draft.levelingShifts ? { levelingShifts: draft.levelingShifts } : {}),
     routeLengthKm,
-    measuredLengthKm: getPz2LengthCheck(draft, routeLengthKm).measuredKm,
+    measuredLengthKm: getPz3LengthCheck(draft, routeLengthKm).measuredKm,
     ...(draft.previewImage ? { previewImage: draft.previewImage } : {}),
   };
 }
 
 /** Раскладка людей и то, что из неё вышло по срокам. */
-function createPz2PlanResult(draft: Pz2Draft): Pz2PlanResult {
-  const totalWorkers = parsePz2Number(draft.totalWorkers) ?? 0;
+function createPz3PlanResult(draft: Pz3Draft): Pz3PlanResult {
+  const totalWorkers = parsePz3Number(draft.totalWorkers) ?? 0;
   const allocations = draft.stages.map((stage) => ({
     stageId: stage.id,
-    workers: parsePz2Number(draft.workersByStage[stage.id] ?? '') ?? 0,
+    workers: parsePz3Number(draft.workersByStage[stage.id] ?? '') ?? 0,
   }));
-  const plan = getPz2Plan(draft, allocations, totalWorkers);
+  const plan = getPz3Plan(draft, allocations, totalWorkers);
 
   return {
     totalWorkers,
@@ -831,8 +833,8 @@ function createPz2PlanResult(draft: Pz2Draft): Pz2PlanResult {
 }
 
 /** Отчёт по нормативам. Признак черновых данных едет вместе с числами. */
-function createPz2ReportResult(draft: Pz2Draft): Pz2ReportResult {
-  const report = getPz2Report(draft);
+function createPz3ReportResult(draft: Pz3Draft): Pz3ReportResult {
+  const report = getPz3Report(draft);
 
   return {
     laborHours: report.laborHours,
@@ -844,16 +846,16 @@ function createPz2ReportResult(draft: Pz2Draft): Pz2ReportResult {
 }
 
 /**
- * Файл ПЗ2. Данные ПЗ1 переносятся из загруженного моста как есть: второе
- * задание продолжает первое, и сохранение ПЗ2 не должно обнулять то, с чем
+ * Файл ПЗ3. Данные ПЗ1 переносятся из загруженного моста как есть: третье
+ * задание использует результат первого, и сохранение ПЗ3 не должно обнулять то, с чем
  * студент пришёл.
  */
-export function createPz2Bridge(
-  draft: Pz2Draft,
+export function createPz3Bridge(
+  draft: Pz3Draft,
   importedBridge: BridgeSchema | null,
   position?: ModulePosition,
 ): BridgeSchema {
-  const source = getPz2RouteSource(importedBridge);
+  const source = getPz3RouteSource(importedBridge);
   const passport = importedBridge?.passport ?? {
     team: '',
     lineTitle: '',
@@ -862,16 +864,16 @@ export function createPz2Bridge(
 
   return createBridge(
     passport,
-    { ...importedBridge?.completed, pz2: createPz2Result(draft, source.totalLengthKm) },
+    { ...importedBridge?.completed, pz3: createPz3Result(draft, source.totalLengthKm) },
     {
       ...importedBridge?.progress,
-      pz2: {
-        works: isPz2WorksComplete(draft),
-        stages: isPz2StagesComplete(draft),
-        plan: isPz2PlanComplete(draft),
+      pz3: {
+        works: isPz3WorksComplete(draft),
+        stages: isPz3StagesComplete(draft),
+        plan: isPz3PlanComplete(draft),
       },
     },
-    { ...importedBridge?.position, ...(position ? { pz2: position } : {}) },
+    { ...importedBridge?.position, ...(position ? { pz3: position } : {}) },
   );
 }
 
@@ -879,18 +881,18 @@ export function createPz2Bridge(
  * Куда открывать задание после загрузки файла — тем же способом, что в ПЗ1:
  * шаг ищется по стабильному id, незнакомый id и файлы без позиции дают интро.
  */
-export function readPz2Position(bridge: BridgeSchema | null | undefined) {
-  const position = bridge?.position?.pz2;
+export function readPz3Position(bridge: BridgeSchema | null | undefined) {
+  const position = bridge?.position?.pz3;
 
   if (!position || !position.phase || position.phase === 'intro') {
     return null;
   }
 
   if (position.phase === 'result') {
-    return { phase: 'result' as const, stepIndex: pz2StepIds.length - 1, theorySeen: true };
+    return { phase: 'result' as const, stepIndex: pz3StepIds.length - 1, theorySeen: true };
   }
 
-  const stepIndex = position.stepId ? pz2StepIds.indexOf(position.stepId as Pz2StepId) : -1;
+  const stepIndex = position.stepId ? pz3StepIds.indexOf(position.stepId as Pz3StepId) : -1;
 
   if (stepIndex < 0) {
     return null;

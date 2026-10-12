@@ -1,7 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { MapLoadingCard } from '../../shared/ui/MapLoadingCard';
 import type { ComponentProps } from 'react';
-import type { Pz2RouteMap as Pz2RouteMapComponent } from './Pz2RouteMap';
+import type { Pz3RouteMap as Pz3RouteMapComponent } from './Pz3RouteMap';
 
 /**
  * Карта трассы, подключаемая по требованию.
@@ -10,9 +10,9 @@ import type { Pz2RouteMap as Pz2RouteMapComponent } from './Pz2RouteMap';
  * только на двух шагах из четырёх. Интро, теория и упражнения открываются, не
  * дожидаясь её.
  */
-const RouteMap = lazy(() => import('./Pz2RouteMap').then((module) => ({ default: module.Pz2RouteMap })));
+const RouteMap = lazy(() => import('./Pz3RouteMap').then((module) => ({ default: module.Pz3RouteMap })));
 
-export function Pz2RouteMap(props: ComponentProps<typeof Pz2RouteMapComponent>) {
+export function Pz3RouteMap(props: ComponentProps<typeof Pz3RouteMapComponent>) {
   return (
     <Suspense
       fallback={

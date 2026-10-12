@@ -9,6 +9,8 @@ export type WorkItem = {
   duration: number;
   labor: number;
   workers: number;
+  /** Ожидание без трудозатрат: влияет на срок, но не занимает рабочих. */
+  isWaiting?: boolean;
   dependencies: string[];
   plannedShift?: number;
   isCritical?: boolean;

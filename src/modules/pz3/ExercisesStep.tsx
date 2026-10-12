@@ -7,9 +7,9 @@ import {
 } from '../../shared/lib/criticalPath';
 import type { CriticalPathSubmission, CriticalPathTimingInput } from '../../shared/lib/criticalPath';
 import { LevelingExercise } from './LevelingExercise';
-import { pz2NetworkExercises } from './networkExercises';
-import type { Pz2NetworkExercise } from './networkExercises';
-import type { Pz2Draft } from './types';
+import { pz3NetworkExercises } from './networkExercises';
+import type { Pz3NetworkExercise } from './networkExercises';
+import type { Pz3Draft } from './types';
 
 const timingLabels = {
   earlyStart: 'РН',
@@ -29,16 +29,16 @@ export function ExercisesStep() {
 }
 
 function CriticalPathExercises() {
-  const { draft, updateDraft } = useModuleState<Pz2Draft>();
-  const [selectedId, setSelectedId] = useState(pz2NetworkExercises[0].id);
+  const { draft, updateDraft } = useModuleState<Pz3Draft>();
+  const [selectedId, setSelectedId] = useState(pz3NetworkExercises[0].id);
   const [checked, setChecked] = useState(false);
   const [showNetwork, setShowNetwork] = useState(false);
   const [showOptional, setShowOptional] = useState(false);
-  const exercise = pz2NetworkExercises.find((item) => item.id === selectedId)!;
+  const exercise = pz3NetworkExercises.find((item) => item.id === selectedId)!;
   const expected = calculateCriticalPath(exercise.works);
   const submission = draft.criticalPathAnswers[exercise.id] ?? createEmptyCriticalPathSubmission();
   const check = checkCriticalPathSubmission(submission, expected);
-  const solved = pz2NetworkExercises.filter((item) => {
+  const solved = pz3NetworkExercises.filter((item) => {
     const answer = draft.criticalPathAnswers[item.id];
     return answer && checkCriticalPathSubmission(answer, calculateCriticalPath(item.works)).coreCorrect;
   }).length;
@@ -72,17 +72,18 @@ function CriticalPathExercises() {
         <div>
           <h3>Поиск критического пути</h3>
         </div>
-        <span className="critical-path__counter">Решено {solved} из {pz2NetworkExercises.length}</span>
+        <span className="critical-path__counter">Решено {solved} из {pz3NetworkExercises.length}</span>
       </div>
       <p className="status-note">
         Каждый вариант — отдельный мини-проект. День 0 — начало; работа стартует после всех предшественников.
         Ресурсные ограничения здесь не учитываются. Сначала найдите ранние сроки, затем срок проекта и все критические пути.
+        В двух дополнительных вариантах опция добавляет работу H; её длительность задана только для учебного примера.
       </p>
 
       <div className="critical-path__chooser">
-        <label htmlFor="pz2-network-variant">Вариант</label>
+        <label htmlFor="pz3-network-variant">Вариант</label>
         <select
-          id="pz2-network-variant"
+          id="pz3-network-variant"
           onChange={(event) => {
             setSelectedId(event.target.value);
             setChecked(false);
@@ -91,7 +92,7 @@ function CriticalPathExercises() {
           }}
           value={selectedId}
         >
-          {pz2NetworkExercises.map((item, index) => (
+          {pz3NetworkExercises.map((item, index) => (
             <option key={item.id} value={item.id}>{String(index + 1).padStart(2, '0')} · {item.title}</option>
           ))}
         </select>
@@ -239,7 +240,7 @@ function CheckMessage({
   );
 }
 
-function NetworkDiagram({ exercise }: { exercise: Pz2NetworkExercise }) {
+function NetworkDiagram({ exercise }: { exercise: Pz3NetworkExercise }) {
   const positions: Record<string, [number, number]> = {
     A: [72, 70], B: [72, 230], C: [255, 70], D: [255, 230],
     E: [445, 105], F: [445, 245], G: [640, 175],
@@ -250,7 +251,7 @@ function NetworkDiagram({ exercise }: { exercise: Pz2NetworkExercise }) {
     <div className="critical-path__network">
       <svg aria-label="Схема зависимостей работ" role="img" viewBox="0 0 720 310">
         <defs>
-          <marker id="pz2-network-arrow" markerHeight="8" markerWidth="8" orient="auto" refX="8" refY="4">
+          <marker id="pz3-network-arrow" markerHeight="8" markerWidth="8" orient="auto" refX="8" refY="4">
             <path d="M0 0 L8 4 L0 8 Z" fill="var(--primary)" />
           </marker>
         </defs>
@@ -260,7 +261,7 @@ function NetworkDiagram({ exercise }: { exercise: Pz2NetworkExercise }) {
           return (
             <line
               key={`${from}-${to}`}
-              markerEnd="url(#pz2-network-arrow)"
+              markerEnd="url(#pz3-network-arrow)"
               stroke="var(--primary)"
               strokeWidth="2"
               x1={x1 + 34}

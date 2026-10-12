@@ -1,12 +1,13 @@
 import { calculateResourceUsage, calculateSchedule, getProjectMetrics } from '../../domain/network/calculations';
 import type { ProjectMetrics, ResourceUsagePoint, ScheduledWorkItem, WorkItem } from '../../domain/network/types';
-import { getPz2StageWorks, getPz2WorkKind, parsePz2Number } from './model';
-import { PZ2_SHIFT_HOURS, pz2ConditionNorms, pz2WorkNorms } from './workNorms';
-import type { Pz2MachineNorm, Pz2MaterialNorm, Pz2SubWorkNorm } from './workNorms';
-import type { Pz2Draft, Pz2WorkDraft } from './types';
+import { getPz3StageWorks, getPz3WorkKind, parsePz3Number } from './model';
+import { getPz3Option } from './options';
+import { PZ3_SHIFT_HOURS, getPz3AdditionalNorm, pz3WorkNorms } from './workNorms';
+import type { Pz3MachineNorm, Pz3MaterialNorm, Pz3SubWorkNorm, Pz3WorkNorm } from './workNorms';
+import type { Pz3Draft, Pz3WorkDraft } from './types';
 
 /**
- * Ресурсный план ПЗ2: сколько людей, сколько времени и что расходуется.
+ * Ресурсный план ПЗ3: сколько людей, сколько времени и что расходуется.
  *
  * Считает не этот файл: расписание, загрузку и метрики даёт движок из
  * domain/network — тот же, на котором работает тренажёр КСГ. Здесь только
@@ -14,19 +15,38 @@ import type { Pz2Draft, Pz2WorkDraft } from './types';
  */
 
 /** Сколько единиц в работе: километров у линейных, штук у штучных. */
-export function getPz2WorkUnits(work: Pz2WorkDraft): number {
-  const measure = getPz2WorkKind(work.kind).measure;
-  const value = parsePz2Number(measure === 'count' ? work.count : work.lengthKm);
+export function getPz3WorkUnits(work: Pz3WorkDraft): number {
+  const measure = getPz3WorkKind(work.kind).measure;
+  const value = parsePz3Number(measure === 'count' ? work.count : work.lengthKm);
 
   return value !== null && value > 0 ? value : 0;
 }
 
 /** Подработы работы вместе с теми, что добавляют условия грунта. */
-export function getPz2SubWorks(work: Pz2WorkDraft): Pz2SubWorkNorm[] {
+export function getPz3SubWorks(work: Pz3WorkDraft): Pz3SubWorkNorm[] {
   return [
-    ...pz2WorkNorms[work.kind].subWorks,
-    ...work.conditions.flatMap((condition) => pz2ConditionNorms[condition].subWorks),
+    ...pz3WorkNorms[work.kind].subWorks,
+    ...work.conditions.flatMap((condition) => getPz3AdditionalNorm(condition)?.subWorks ?? []),
   ];
+}
+
+function getWorkNormEntries(work: Pz3WorkDraft): { norm: Pz3WorkNorm; units: number }[] {
+  const units = getPz3WorkUnits(work);
+  return [
+    { norm: pz3WorkNorms[work.kind], units },
+    ...work.conditions.flatMap((condition) => {
+      const norm = getPz3AdditionalNorm(condition);
+      return norm ? [{ norm, units: norm.basis === 'work' ? 1 : units }] : [];
+    }),
+  ];
+}
+
+function getCostMultipliers(work: Pz3WorkDraft) {
+  const effects = work.conditions.map((id) => getPz3Option(id, work.kind)?.effect);
+  return {
+    labor: 1 + effects.filter((effect) => effect === 'labor30' || effect === 'laborMaterials30').length * 0.3,
+    materials: 1 + effects.filter((effect) => effect === 'laborMaterials30').length * 0.3,
+  };
 }
 
 /**
@@ -35,10 +55,12 @@ export function getPz2SubWorks(work: Pz2WorkDraft): Pz2SubWorkNorm[] {
  * Считается как сумма подработ на единицу, умноженная на длину или количество:
  * отчёт и график берут её из одного места и разойтись не могут.
  */
-export function getPz2WorkLaborHours(work: Pz2WorkDraft): number {
-  const perUnit = getPz2SubWorks(work).reduce((sum, subWork) => sum + subWork.laborHours, 0);
-
-  return perUnit * getPz2WorkUnits(work);
+export function getPz3WorkLaborHours(work: Pz3WorkDraft): number {
+  const base = getWorkNormEntries(work).reduce(
+    (sum, { norm, units }) => sum + norm.subWorks.reduce((part, item) => part + item.laborHours * units, 0),
+    0,
+  );
+  return base * getCostMultipliers(work).labor;
 }
 
 /**
@@ -47,15 +69,16 @@ export function getPz2WorkLaborHours(work: Pz2WorkDraft): number {
  * Люди делят работу: вдвое больше людей — вдвое короче срок. Меньше дня работа
  * длиться не может, дробные дни округляются вверх — смену не делят.
  */
-export function getPz2WorkDurationDays(work: Pz2WorkDraft, workers: number): number {
+export function getPz3WorkDurationDays(work: Pz3WorkDraft, workers: number): number {
   if (workers <= 0) {
     return 0;
   }
 
-  return Math.max(1, Math.ceil(getPz2WorkLaborHours(work) / (workers * PZ2_SHIFT_HOURS)));
+  const baseDays = Math.max(1, Math.ceil(getPz3WorkLaborHours(work) / (workers * PZ3_SHIFT_HOURS)));
+  return baseDays + (work.conditions.includes('settlement') ? 90 : 0);
 }
 
-export interface Pz2StageAllocation {
+export interface Pz3StageAllocation {
   stageId: string;
   workers: number;
 }
@@ -67,16 +90,16 @@ export interface Pz2StageAllocation {
  * нём одновременно не ведут. Этапы независимы и стартуют вместе: в этом и смысл
  * разбиения, участки строят параллельно.
  */
-export function buildPz2WorkItems(draft: Pz2Draft, allocations: Pz2StageAllocation[]): WorkItem[] {
+export function buildPz3WorkItems(draft: Pz3Draft, allocations: Pz3StageAllocation[]): WorkItem[] {
   const workersByStage = new Map(allocations.map((allocation) => [allocation.stageId, allocation.workers]));
 
   return draft.stages.flatMap((stage, stageIndex) => {
     const workers = Math.max(0, workersByStage.get(stage.id) ?? 0);
-    const works = getPz2StageWorks(draft, stage.id);
+    const works = getPz3StageWorks(draft, stage.id);
     let previousId: string | null = null;
 
     return works.flatMap((work, workIndex) => {
-      const duration = getPz2WorkDurationDays(work, workers);
+      const duration = getPz3WorkDurationDays(work, workers);
 
       if (duration === 0) {
         return [];
@@ -85,23 +108,40 @@ export function buildPz2WorkItems(draft: Pz2Draft, allocations: Pz2StageAllocati
       const item: WorkItem = {
         id: work.id,
         code: `${stageIndex + 1}.${workIndex + 1}`,
-        title: getPz2WorkKind(work.kind).label,
+        title: getPz3WorkKind(work.kind).label,
         from: previousId ?? `stage-${stage.id}-start`,
         to: work.id,
-        duration,
-        labor: Math.round(getPz2WorkLaborHours(work)),
+        duration: duration - (work.conditions.includes('settlement') ? 90 : 0),
+        labor: Math.round(getPz3WorkLaborHours(work)),
         workers,
         dependencies: previousId ? [previousId] : [],
       };
 
-      previousId = work.id;
+      if (work.conditions.includes('settlement')) {
+        const waitId = `${work.id}-settlement`;
+        const wait: WorkItem = {
+          id: waitId,
+          code: `${item.code}.п`,
+          title: 'Стабилизация осадок',
+          from: work.id,
+          to: waitId,
+          duration: 90,
+          labor: 0,
+          workers: 0,
+          isWaiting: true,
+          dependencies: [work.id],
+        };
+        previousId = waitId;
+        return [item, wait];
+      }
 
+      previousId = work.id;
       return [item];
     });
   });
 }
 
-export interface Pz2Plan {
+export interface Pz3Plan {
   items: ScheduledWorkItem[];
   usage: ResourceUsagePoint[];
   metrics: ProjectMetrics;
@@ -118,8 +158,8 @@ export interface Pz2Plan {
  * перегрузку и простой. Этап без людей в график не попадает — работать некому,
  * и молча ставить ему срок нельзя.
  */
-export function getPz2Plan(draft: Pz2Draft, allocations: Pz2StageAllocation[], totalWorkers: number): Pz2Plan {
-  const items = buildPz2WorkItems(draft, allocations);
+export function getPz3Plan(draft: Pz3Draft, allocations: Pz3StageAllocation[], totalWorkers: number): Pz3Plan {
+  const items = buildPz3WorkItems(draft, allocations);
   const schedule = calculateSchedule(items);
   const assignedWorkers = allocations.reduce((sum, allocation) => sum + Math.max(0, allocation.workers), 0);
 
@@ -132,16 +172,16 @@ export function getPz2Plan(draft: Pz2Draft, allocations: Pz2StageAllocation[], t
       .filter((stage) => {
         const workers = allocations.find((allocation) => allocation.stageId === stage.id)?.workers ?? 0;
 
-        return workers <= 0 && getPz2StageWorks(draft, stage.id).length > 0;
+        return workers <= 0 && getPz3StageWorks(draft, stage.id).length > 0;
       })
       .map((stage) => stage.id),
   };
 }
 
 /** Столбцов в гистограмме загрузки: больше на экране не различить. */
-export const PZ2_LOAD_COLUMNS = 90;
+export const PZ3_LOAD_COLUMNS = 90;
 
-export interface Pz2LoadColumn {
+export interface Pz3LoadColumn {
   /** Первый и последний день, попавшие в столбец. */
   fromDay: number;
   toDay: number;
@@ -158,7 +198,7 @@ export interface Pz2LoadColumn {
  * среднее: нехватка людей на два дня из десяти — это нехватка, и усреднение
  * прятало бы её.
  */
-export function getPz2LoadColumns(usage: ResourceUsagePoint[], columns = PZ2_LOAD_COLUMNS): Pz2LoadColumn[] {
+export function getPz3LoadColumns(usage: ResourceUsagePoint[], columns = PZ3_LOAD_COLUMNS): Pz3LoadColumn[] {
   if (usage.length === 0) {
     return [];
   }
@@ -181,55 +221,57 @@ export function getPz2LoadColumns(usage: ResourceUsagePoint[], columns = PZ2_LOA
   });
 }
 
-export interface Pz2ReportRow {
+export interface Pz3ReportRow {
   title: string;
   unit: string;
   amount: number;
 }
 
-export interface Pz2Report {
+export interface Pz3Report {
   laborHours: number;
   machineHours: number;
-  materials: Pz2ReportRow[];
-  machines: Pz2ReportRow[];
-  subWorks: Pz2ReportRow[];
+  materials: Pz3ReportRow[];
+  machines: Pz3ReportRow[];
+  subWorks: Pz3ReportRow[];
 }
 
 /**
- * Отчёт по проекту: материалы, человеко-часы и машино-часы (ТЗ ПЗ2 §9).
+ * Отчёт по проекту: материалы, человеко-часы и машино-часы (ТЗ ПЗ3 §9).
  *
  * Одинаковые позиции складываются: студент видит расход по проекту, а не по
  * каждой строке таблицы работ.
  */
-export function getPz2Report(draft: Pz2Draft): Pz2Report {
-  const materials = new Map<string, Pz2ReportRow>();
-  const machines = new Map<string, Pz2ReportRow>();
-  const subWorks = new Map<string, Pz2ReportRow>();
+export function getPz3Report(draft: Pz3Draft): Pz3Report {
+  const materials = new Map<string, Pz3ReportRow>();
+  const machines = new Map<string, Pz3ReportRow>();
+  const subWorks = new Map<string, Pz3ReportRow>();
   let laborHours = 0;
   let machineHours = 0;
 
   for (const work of draft.works) {
-    const units = getPz2WorkUnits(work);
+    const units = getPz3WorkUnits(work);
 
     if (units === 0) {
       continue;
     }
 
-    const norms = [pz2WorkNorms[work.kind], ...work.conditions.map((condition) => pz2ConditionNorms[condition])];
+    const multipliers = getCostMultipliers(work);
+    const norms = getWorkNormEntries(work);
 
-    for (const norm of norms) {
-      norm.subWorks.forEach((subWork: Pz2SubWorkNorm) => {
-        laborHours += subWork.laborHours * units;
-        addRow(subWorks, subWork.title, 'чел.-ч', subWork.laborHours * units);
+    for (const { norm, units: normUnits } of norms) {
+      norm.subWorks.forEach((subWork: Pz3SubWorkNorm) => {
+        const amount = subWork.laborHours * normUnits * multipliers.labor;
+        laborHours += amount;
+        addRow(subWorks, subWork.title, 'чел.-ч', amount);
       });
 
-      norm.materials.forEach((material: Pz2MaterialNorm) => {
-        addRow(materials, material.title, material.unit, material.perUnit * units);
+      norm.materials.forEach((material: Pz3MaterialNorm) => {
+        addRow(materials, material.title, material.unit, material.perUnit * normUnits * multipliers.materials);
       });
 
-      norm.machines.forEach((machine: Pz2MachineNorm) => {
-        machineHours += machine.machineHours * units;
-        addRow(machines, machine.title, 'маш.-ч', machine.machineHours * units);
+      norm.machines.forEach((machine: Pz3MachineNorm) => {
+        machineHours += machine.machineHours * normUnits;
+        addRow(machines, machine.title, 'маш.-ч', machine.machineHours * normUnits);
       });
     }
   }
@@ -243,7 +285,7 @@ export function getPz2Report(draft: Pz2Draft): Pz2Report {
   };
 }
 
-function addRow(rows: Map<string, Pz2ReportRow>, title: string, unit: string, amount: number) {
+function addRow(rows: Map<string, Pz3ReportRow>, title: string, unit: string, amount: number) {
   const existing = rows.get(title);
 
   if (existing) {
@@ -255,6 +297,6 @@ function addRow(rows: Map<string, Pz2ReportRow>, title: string, unit: string, am
 }
 
 /** По убыванию расхода: крупные позиции первыми — их и обсуждают. */
-function sortRows(rows: Map<string, Pz2ReportRow>): Pz2ReportRow[] {
+function sortRows(rows: Map<string, Pz3ReportRow>): Pz3ReportRow[] {
   return [...rows.values()].sort((left, right) => right.amount - left.amount);
 }

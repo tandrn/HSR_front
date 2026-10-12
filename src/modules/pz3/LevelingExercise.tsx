@@ -1,10 +1,10 @@
 import { useModuleState } from '../../bridge/context';
-import { PZ2_LEVELING_LIMIT, getPz2Leveling } from './leveling';
-import type { Pz2LevelingRow, Pz2LevelingState } from './leveling';
-import type { Pz2Draft } from './types';
+import { PZ3_LEVELING_LIMIT, getPz3Leveling } from './leveling';
+import type { Pz3LevelingRow, Pz3LevelingState } from './leveling';
+import type { Pz3Draft } from './types';
 
 /**
- * Упражнение Ольги Владимировны — выравнивание загрузки (ТЗ ПЗ2 §7.1).
+ * Упражнение Ольги Владимировны — выравнивание загрузки (ТЗ ПЗ3 §7.1).
  *
  * Раньше здесь стоял тренажёр КСГ целиком: определитель работ на десять
  * колонок, редактор работы, таблица расчёта, схема зависимостей, восемь плиток
@@ -16,9 +16,9 @@ import type { Pz2Draft } from './types';
  * `domain/network` не переписывался, ТЗ §7.1 этого не позволяет.
  */
 export function LevelingExercise() {
-  const { draft, updateDraft } = useModuleState<Pz2Draft>();
+  const { draft, updateDraft } = useModuleState<Pz3Draft>();
   const shifts = draft.levelingShifts ?? {};
-  const state = getPz2Leveling(shifts);
+  const state = getPz3Leveling(shifts);
   const hasShifts = Object.values(shifts).some((shift) => shift > 0);
 
   function setShift(id: string, shift: number) {
@@ -46,9 +46,9 @@ export function LevelingExercise() {
       </div>
 
       <p className="status-note">
-        В бригаде {PZ2_LEVELING_LIMIT} человек, и больше их не станет. Работы на критическом пути держат срок — их
+        В бригаде {PZ3_LEVELING_LIMIT} человек, и больше их не станет. Работы на критическом пути держат срок — их
         двигать нельзя. У остальных есть резерв: сдвиньте их так, чтобы ни в один день не требовалось больше{' '}
-        {PZ2_LEVELING_LIMIT} человек. Срок проекта от этого не изменится — в этом и смысл резерва.
+        {PZ3_LEVELING_LIMIT} человек. Срок проекта от этого не изменится — в этом и смысл резерва.
       </p>
 
       <dl className="forecast-summary-grid forecast-summary-grid--compact">
@@ -85,7 +85,7 @@ function LevelingChart({
   state,
   onShiftChange,
 }: {
-  state: Pz2LevelingState;
+  state: Pz3LevelingState;
   onShiftChange: (id: string, shift: number) => void;
 }) {
   // Высота столбика меряется от большего из двух: пика и бригады. Иначе при
@@ -128,7 +128,7 @@ function LevelingRow({
   totalDays,
   onShiftChange,
 }: {
-  row: Pz2LevelingRow;
+  row: Pz3LevelingRow;
   totalDays: number;
   onShiftChange: (id: string, shift: number) => void;
 }) {

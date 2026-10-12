@@ -1,7 +1,7 @@
 import type { CriticalPathWork } from '../../shared/lib/criticalPath';
 
 /** Семь мини-проектов из файла заказчика «Упражнения: поиск критического пути при строительстве ВСМ». */
-export interface Pz2NetworkExercise {
+export interface Pz3NetworkExercise {
   id: string;
   title: string;
   question: string;
@@ -13,7 +13,7 @@ const predecessors: Record<string, string[]> = {
   A: [], B: [], C: ['A'], D: ['B'], E: ['C', 'D'], F: ['C'], G: ['E', 'F'],
 };
 
-function exercise(id: string, title: string, question: string, durations: number[], titles: string[]): Pz2NetworkExercise {
+function exercise(id: string, title: string, question: string, durations: number[], titles: string[]): Pz3NetworkExercise {
   const ids = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
   return {
     id, title, question,
@@ -23,7 +23,7 @@ function exercise(id: string, title: string, question: string, durations: number
   };
 }
 
-export const pz2NetworkExercises: Pz2NetworkExercise[] = [
+export const pz3NetworkExercises: Pz3NetworkExercise[] = [
   exercise("repair", "Ремонт существующей линии", "Какие работы нельзя задержать ни на один день без изменения срока завершения ремонта?",
     [2,3,4,2,3,2,2],
     ["Обследование пути и составление дефектной ведомости","Доставка материалов и техники","Демонтаж дефектных элементов пути","Подготовка и настройка путевой техники","Замена элементов верхнего строения пути","Ремонт водоотвода на ремонтируемом участке","Выправка пути и приёмочный контроль"],
@@ -53,3 +53,22 @@ export const pz2NetworkExercises: Pz2NetworkExercise[] = [
     ["Разбивка места установки и подготовка фронта работ","Изготовление и доставка элементов стрелочного перевода","Подготовка основания и путевой решётки","Подготовка монтажной техники","Укладка элементов стрелочного перевода","Прокладка кабелей и подготовка привода","Подключение, регулировка и испытания"],
   ),
 ];
+
+/** Два учебных продолжения базовых сетей: опция добавляет отдельную работу и связи. */
+function withAddedOperation(baseId: string, id: string, title: string, operation: string, days: number): Pz3NetworkExercise {
+  const base = pz3NetworkExercises.find((item) => item.id === baseId)!;
+  return {
+    id,
+    title,
+    question: `После добавления работы H «${operation}» пересчитайте ранние сроки, срок проекта и критический путь. Что изменилось относительно базового варианта?`,
+    works: base.works.flatMap((work) => {
+      if (work.id === 'C') return [work, { id: 'H', title: operation, durationDays: days, predecessors: ['C'] }];
+      return [work.id === 'E' ? { ...work, predecessors: ['H', 'D'] } : work];
+    }),
+  };
+}
+
+pz3NetworkExercises.push(
+  withAddedOperation('repair', 'repair-cleaning', 'Ремонт · загрязнённый балласт', 'Очистка балласта', 3),
+  withAddedOperation('ballast', 'ballast-piles', 'Балластный путь · слабые грунты', 'Забивка свай', 4),
+);

@@ -2,7 +2,7 @@ import type { Pz1Station, RouteLine } from '../../bridge/schema';
 import type { CriticalPathSubmission } from '../../shared/lib/criticalPath';
 
 /** Что студент размещает на трассе. Список закрыт заказчиком на встрече 02.09. */
-export type Pz2WorkKind =
+export type Pz3WorkKind =
   | 'existingLineRepair'
   | 'earthworks'
   | 'ballastTrack'
@@ -12,51 +12,57 @@ export type Pz2WorkKind =
   | 'turnout';
 
 /** Как объект меряется: длиной вдоль трассы или штуками. */
-export type Pz2WorkMeasure = 'length' | 'count';
+export type Pz3WorkMeasure = 'length' | 'count';
 
 /**
  * Дополнительное условие на участке. Меняет состав работ: слабые грунты
- * требуют забивки свай до твёрдого слоя с устройством ростверка (ТЗ ПЗ2 §4.1).
+ * требуют забивки свай до твёрдого слоя с устройством ростверка (ТЗ ПЗ3 §4.1).
  * Насколько меняется трудоёмкость — вопрос к заказчику (в-6).
  *
  * Формулировка второго условия расходится в источниках: на доске «скальные
  * породы», в записи «скальные основания». Взято написание из ТЗ (в-2).
  */
-export type Pz2SoilCondition = 'weakSoil' | 'rocky';
+export type Pz3SoilCondition =
+  | 'weakSoil' | 'rocky' // сохранения до уточнения заказчиком состава опций
+  | 'shortWindows' | 'ballastContamination' | 'formationDeformation' | 'restrictedAccess'
+  | 'weakFoundation' | 'groundwater' | 'highEmbankment' | 'deepCut'
+  | 'settlement' | 'transition' | 'curvedViaduct'
+  | 'weakBridgeSupport' | 'riverSupports' | 'navigableRiver'
+  | 'unstableTunnelGround' | 'tunnelGroundwater' | 'abrasiveRock' | 'underBuildings';
 
-export interface Pz2WorkDraft {
+export interface Pz3WorkDraft {
   id: string;
-  kind: Pz2WorkKind;
+  kind: Pz3WorkKind;
   /** Длина участка, км. Текстом — как и все числовые поля в проекте. */
   lengthKm: string;
   /** Количество штук для объектов без длины. */
   count: string;
   /** Пусто — обычные условия. Условия не исключают друг друга, поэтому список. */
-  conditions: Pz2SoilCondition[];
+  conditions: Pz3SoilCondition[];
   /** Этап, которому принадлежит работа. null — работа в общем пуле (ТЗ §4.1). */
   stageId: string | null;
   /** Участок трассы, которым строку намерили: км от начала. У ручных строк пусто. */
-  span?: Pz2RouteSpan;
+  span?: Pz3RouteSpan;
   /** Положение объекта без намеренного участка на трассе, км от начала. */
   positionKm?: number;
 }
 
 /** Отмеренный линейкой кусок трассы. */
-export interface Pz2RouteSpan {
+export interface Pz3RouteSpan {
   fromKm: number;
   toKm: number;
 }
 
 /** Пространственный этап: участок трассы, который строится параллельно другим. */
-export interface Pz2StageDraft {
+export interface Pz3StageDraft {
   id: string;
   title: string;
   order: number;
 }
 
-export interface Pz2Draft {
-  works: Pz2WorkDraft[];
-  stages: Pz2StageDraft[];
+export interface Pz3Draft {
+  works: Pz3WorkDraft[];
+  stages: Pz3StageDraft[];
   /** Ответы на упражнения про критический путь: id упражнения → заполненная форма. */
   criticalPathAnswers: Record<string, CriticalPathSubmission>;
   /** Упражнение на выравнивание: id работы → сдвиг в днях. Пусто — не начато. */
@@ -71,8 +77,8 @@ export interface Pz2Draft {
   previewImage?: string;
 }
 
-/** Данные, которые ПЗ2 забирает из JSON-моста ПЗ1. */
-export interface Pz2RouteSource {
+/** Данные, которые ПЗ3 забирает из JSON-моста ПЗ1. */
+export interface Pz3RouteSource {
   routeLine: RouteLine | null;
   stations: Pz1Station[];
   totalLengthKm: number;
@@ -80,7 +86,7 @@ export interface Pz2RouteSource {
 }
 
 /** Точка линии трассы из ПЗ1 с километражом от начала. */
-export interface Pz2RoutePointMark {
+export interface Pz3RoutePointMark {
   id: string;
   /** Номер по порядку — тот же, что видел студент в ПЗ1. */
   number: number;
@@ -90,7 +96,7 @@ export interface Pz2RoutePointMark {
 }
 
 /** Сегмент трассы из ПЗ1: прямая вставка или кривая между двумя точками. */
-export interface Pz2SegmentMark {
+export interface Pz3SegmentMark {
   id: string;
   number: number;
   lengthKm: number;
@@ -100,8 +106,8 @@ export interface Pz2SegmentMark {
   fromKm: number;
 }
 
-/** Станция ПЗ1 на трассе ПЗ2: та же точка, но с километражом от начала. */
-export interface Pz2StationMark {
+/** Станция ПЗ1 на трассе ПЗ3: та же точка, но с километражом от начала. */
+export interface Pz3StationMark {
   label: string;
   name: string;
   lat: number;
@@ -111,9 +117,9 @@ export interface Pz2StationMark {
 }
 
 /** Значок объекта на трассе: где стоит и что подписано. */
-export interface Pz2WorkMark {
+export interface Pz3WorkMark {
   id: string;
-  kind: Pz2WorkKind;
+  kind: Pz3WorkKind;
   /** Название объекта из словаря значков. */
   label: string;
   title: string;
@@ -126,9 +132,9 @@ export interface Pz2WorkMark {
 }
 
 /** Куски трассы одного этапа с его цветом — раскраска карты на экране 02. */
-export interface Pz2StageSpanGroup {
+export interface Pz3StageSpanGroup {
   id: string;
   title: string;
   color: string;
-  spans: Pz2RouteSpan[];
+  spans: Pz3RouteSpan[];
 }

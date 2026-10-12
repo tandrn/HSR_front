@@ -13,16 +13,16 @@ import {
 } from '../../shared/lib/mapPreview';
 import type { PreviewOptions } from '../../shared/lib/mapPreview';
 import type { RouteRuler } from '../../shared/lib/routeRuler';
-import { formatPz2Km } from './model';
-import { PZ2_ICON_GRID, PZ2_ICON_STROKE, getPz2WorkIcon } from './workIcons';
+import { formatPz3Km } from './model';
+import { PZ3_ICON_GRID, PZ3_ICON_STROKE, getPz3WorkIcon } from './workIcons';
 import type {
-  Pz2RoutePointMark,
-  Pz2RouteSpan,
-  Pz2SegmentMark,
-  Pz2StageSpanGroup,
-  Pz2StationMark,
-  Pz2WorkKind,
-  Pz2WorkMark,
+  Pz3RoutePointMark,
+  Pz3RouteSpan,
+  Pz3SegmentMark,
+  Pz3StageSpanGroup,
+  Pz3StationMark,
+  Pz3WorkKind,
+  Pz3WorkMark,
 } from './types';
 
 /**
@@ -47,17 +47,17 @@ const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
  * срабатывал на каждое нажатие клавиши в таблице работ и пересобирал geojson
  * всей трассы.
  */
-const NO_WORK_MARKS: Pz2WorkMark[] = [];
-const NO_STAGE_SPANS: Pz2StageSpanGroup[] = [];
+const NO_WORK_MARKS: Pz3WorkMark[] = [];
+const NO_STAGE_SPANS: Pz3StageSpanGroup[] = [];
 
-const ROUTE_SOURCE_ID = 'pz2-route';
-const ROUTE_LAYER_ID = 'pz2-route-line';
-const SPAN_SOURCE_ID = 'pz2-span';
-const SPAN_LAYER_ID = 'pz2-span-line';
-const MARK_SOURCE_ID = 'pz2-marks';
-const MARK_LAYER_ID = 'pz2-marks-points';
-const STAGE_SOURCE_ID = 'pz2-stages';
-const STAGE_LAYER_ID = 'pz2-stages-line';
+const ROUTE_SOURCE_ID = 'pz3-route';
+const ROUTE_LAYER_ID = 'pz3-route-line';
+const SPAN_SOURCE_ID = 'pz3-span';
+const SPAN_LAYER_ID = 'pz3-span-line';
+const MARK_SOURCE_ID = 'pz3-marks';
+const MARK_LAYER_ID = 'pz3-marks-points';
+const STAGE_SOURCE_ID = 'pz3-stages';
+const STAGE_LAYER_ID = 'pz3-stages-line';
 /** Поля вокруг вписанной трассы, пикселей. */
 const ROUTE_PADDING_PX = 36;
 /** Сколько тайлов должно не загрузиться, прежде чем говорить о проблеме. */
@@ -68,23 +68,23 @@ const MAGNET_PX = 14;
 const SNAP_LIMIT_SHARE = 0.05;
 const SNAP_LIMIT_MIN_KM = 2;
 
-interface Pz2RouteMapProps {
+interface Pz3RouteMapProps {
   ruler: RouteRuler;
   /** Станции из ПЗ1 с километражом — ориентиры, между которыми меряют участки. */
-  stations: Pz2StationMark[];
+  stations: Pz3StationMark[];
   /** Точки линии, которые студент ставил в ПЗ1: та же трасса, те же номера. */
-  routePoints: Pz2RoutePointMark[];
+  routePoints: Pz3RoutePointMark[];
   /** Прямые вставки и кривые из ПЗ1 — справочно, менять их здесь нельзя. */
-  segments: Pz2SegmentMark[];
+  segments: Pz3SegmentMark[];
   /** Объекты на трассе с их значками. */
-  workMarks?: Pz2WorkMark[];
+  workMarks?: Pz3WorkMark[];
   /** Перестановка объекта без намеренного участка вдоль трассы. */
   onWorkPositionChange?: (workId: string, distanceKm: number) => void;
   /**
    * Куски трассы по этапам — раскраска для экрана 02. Линейка там не нужна:
    * трасса уже размечена, этот экран только распределяет работы.
    */
-  stageSpans?: Pz2StageSpanGroup[];
+  stageSpans?: Pz3StageSpanGroup[];
   /** Этап, на который навели: остальные приглушаются. */
   highlightedStageId?: string;
   /** Показывать линейку и переключатель режимов. */
@@ -93,11 +93,11 @@ interface Pz2RouteMapProps {
   marksKm: number[];
   onMarksChange: (marksKm: number[]) => void;
   /** Участок измерен: две отметки поставлены. */
-  onMeasured: (lengthKm: number, span: Pz2RouteSpan) => void;
+  onMeasured: (lengthKm: number, span: Pz3RouteSpan) => void;
   /** Участок строки, на которую навели в таблице: показываем вместо текущих отметок. */
-  highlightedSpan?: Pz2RouteSpan | null;
+  highlightedSpan?: Pz3RouteSpan | null;
   /**
-   * Снимок карты для отчёта. Карта в ПЗ2 — главное, что студент делает руками,
+   * Снимок карты для отчёта. Карта в ПЗ3 — главное, что студент делает руками,
    * и отчёт без неё не показывает, где на трассе стоят работы.
    */
   onPreviewImageChange?: (previewImage: string) => void;
@@ -111,7 +111,7 @@ interface Pz2RouteMapProps {
  * расстояний от начала. Так сумма участков сходится с длиной маршрута — на этом
  * держится проверка длины на шаге.
  */
-export function Pz2RouteMap({
+export function Pz3RouteMap({
   ruler,
   stations,
   routePoints,
@@ -126,7 +126,7 @@ export function Pz2RouteMap({
   onMeasured,
   onPreviewImageChange,
   onWorkPositionChange,
-}: Pz2RouteMapProps) {
+}: Pz3RouteMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
@@ -352,7 +352,7 @@ export function Pz2RouteMap({
   }, [highlightedSpan, highlightedStageId, isMapReady, marksKm, ruler, stageSpans, workMarks]);
 
   useEffect(() => {
-    // Esc → «Просмотр»: та же механика, что в ПЗ1 (ТЗ v3.5 §3 П-04), ТЗ ПЗ2 §5.1
+    // Esc → «Просмотр»: та же механика, что в ПЗ1 (ТЗ v3.5 §3 П-04), ТЗ ПЗ3 §5.1
     // требует её здесь же, поэтому поведение повторяется дословно.
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -382,7 +382,7 @@ export function Pz2RouteMap({
           [point.lon, point.lat],
           'maplibre-marker--route',
           String(point.number),
-          `Точка трассы ${point.number} — ${formatPz2Km(point.distanceKm)} от начала`,
+          `Точка трассы ${point.number} — ${formatPz3Km(point.distanceKm)} от начала`,
         ),
       ),
       ...workMarks.flatMap((mark) => {
@@ -396,7 +396,7 @@ export function Pz2RouteMap({
           [station.lon, station.lat],
           'maplibre-marker--station',
           station.label,
-          `Станция ${station.label}${station.name ? `: ${station.name}` : ''} — ${formatPz2Km(station.distanceKm)} от начала трассы`,
+          `Станция ${station.label}${station.name ? `: ${station.name}` : ''} — ${formatPz3Km(station.distanceKm)} от начала трассы`,
         ),
       ),
     ];
@@ -474,13 +474,13 @@ export function Pz2RouteMap({
             студент следит именно за ней, и отправлять её в угол нельзя. */}
         {measuringKm !== null && markPoint ? (
           <span className="ruler-live" style={{ left: markPoint.x, top: markPoint.y }}>
-            {formatPz2Km(measuringKm)}
+            {formatPz3Km(measuringKm)}
           </span>
         ) : null}
 
         <div className="route-length-panel">
           <span>{panelLabel(highlightedKm, marksKm.length)}</span>
-          <strong>{formatPz2Km(highlightedKm ?? measuringKm ?? ruler.totalKm)}</strong>
+          <strong>{formatPz3Km(highlightedKm ?? measuringKm ?? ruler.totalKm)}</strong>
         </div>
       </div>
 
@@ -493,7 +493,7 @@ export function Pz2RouteMap({
             <li key={station.label}>
               <span className="route-stations-legend__label">{station.label}</span>
               <span>{station.name || 'без названия'}</span>
-              <strong>{formatPz2Km(station.distanceKm)}</strong>
+              <strong>{formatPz3Km(station.distanceKm)}</strong>
             </li>
           ))}
         </ul>
@@ -504,7 +504,7 @@ export function Pz2RouteMap({
           <li className="route-works-legend__caption">Объекты на трассе:</li>
           {workLegend.map((item) => (
             <li key={item.kind}>
-              <span className="route-works-legend__icon" style={{ backgroundColor: getPz2WorkIcon(item.kind)?.color }}>
+              <span className="route-works-legend__icon" style={{ backgroundColor: getPz3WorkIcon(item.kind)?.color }}>
                 <WorkIconGlyph kind={item.kind} />
               </span>
               <span>{item.label}</span>
@@ -524,8 +524,8 @@ export function Pz2RouteMap({
               <li key={segment.id}>
                 <span>Сегмент {segment.number}</span>
                 <span>{segment.radiusM === null ? 'прямая вставка' : `кривая R = ${segment.radiusM} м`}</span>
-                <strong>{formatPz2Km(segment.lengthKm)}</strong>
-                <span className="route-segments-summary__from">с {formatPz2Km(segment.fromKm)}</span>
+                <strong>{formatPz3Km(segment.lengthKm)}</strong>
+                <span className="route-segments-summary__from">с {formatPz3Km(segment.fromKm)}</span>
               </li>
             ))}
           </ul>
@@ -633,11 +633,11 @@ function createMarker(map: MapLibreMap, lngLat: [number, number], modifier: stri
 function createWorkMarker(
   map: MapLibreMap,
   lngLat: [number, number],
-  mark: Pz2WorkMark,
+  mark: Pz3WorkMark,
   onPositionChangeRef: { current?: (workId: string, distanceKm: number) => void },
   rulerRef: { current: RouteRuler },
 ) {
-  const icon = getPz2WorkIcon(mark.kind);
+  const icon = getPz3WorkIcon(mark.kind);
   const element = document.createElement('span');
   const draggable = Boolean(mark.draggable && onPositionChangeRef.current);
   element.className = `maplibre-marker maplibre-marker--work${mark.kind === 'turnout' ? ' maplibre-marker--turnout' : ''}${draggable ? ' is-draggable' : ''}`;
@@ -650,7 +650,7 @@ function createWorkMarker(
 
   if (icon) {
     const svg = document.createElementNS(SVG_NAMESPACE, 'svg');
-    svg.setAttribute('viewBox', `0 0 ${PZ2_ICON_GRID} ${PZ2_ICON_GRID}`);
+    svg.setAttribute('viewBox', `0 0 ${PZ3_ICON_GRID} ${PZ3_ICON_GRID}`);
     svg.setAttribute('aria-hidden', 'true');
     svg.setAttribute('focusable', 'false');
 
@@ -711,10 +711,10 @@ function createPreviewOptions({
   stageSpans,
 }: {
   ruler: RouteRuler;
-  stations: Pz2StationMark[];
-  routePoints: Pz2RoutePointMark[];
-  workMarks: Pz2WorkMark[];
-  stageSpans: Pz2StageSpanGroup[];
+  stations: Pz3StationMark[];
+  routePoints: Pz3RoutePointMark[];
+  workMarks: Pz3WorkMark[];
+  stageSpans: Pz3StageSpanGroup[];
 }): PreviewOptions {
   const paint: PreviewOptions['paint'] = ({ context, project }) => {
     const toPoint = (point: { lat: number; lon: number }) => project([point.lon, point.lat]);
@@ -741,7 +741,7 @@ function createPreviewOptions({
 
     for (const mark of workMarks) {
       const point = pointAtDistance(ruler, mark.distanceKm);
-      const icon = getPz2WorkIcon(mark.kind);
+      const icon = getPz3WorkIcon(mark.kind);
 
       if (!point || !icon) {
         continue;
@@ -749,8 +749,8 @@ function createPreviewOptions({
 
       drawPreviewIcon(context, toPoint(point), {
         paths: icon.paths,
-        gridSize: PZ2_ICON_GRID,
-        strokeWidth: PZ2_ICON_STROKE,
+        gridSize: PZ3_ICON_GRID,
+        strokeWidth: PZ3_ICON_STROKE,
         radius: mark.kind === 'turnout' ? 14 : 11,
         color: icon.color,
         ...(mark.kind === 'turnout' ? { countLabel: String(mark.count ?? 0) } : {}),
@@ -771,8 +771,8 @@ function createPreviewOptions({
 }
 
 /** Какие сооружения отмечены на карте и сколько их — расшифровка значков. */
-function getWorkLegend(workMarks: Pz2WorkMark[]) {
-  const counts = new Map<Pz2WorkKind, { kind: Pz2WorkKind; label: string; count: number }>();
+function getWorkLegend(workMarks: Pz3WorkMark[]) {
+  const counts = new Map<Pz3WorkKind, { kind: Pz3WorkKind; label: string; count: number }>();
 
   for (const mark of workMarks) {
     const item = counts.get(mark.kind);
@@ -788,15 +788,15 @@ function getWorkLegend(workMarks: Pz2WorkMark[]) {
 }
 
 /** Значок в вёрстке легенды — те же контуры, что и у маркера. */
-function WorkIconGlyph({ kind }: { kind: Pz2WorkKind }) {
-  const icon = getPz2WorkIcon(kind);
+function WorkIconGlyph({ kind }: { kind: Pz3WorkKind }) {
+  const icon = getPz3WorkIcon(kind);
 
   if (!icon) {
     return null;
   }
 
   return (
-    <svg aria-hidden="true" focusable="false" viewBox={`0 0 ${PZ2_ICON_GRID} ${PZ2_ICON_GRID}`}>
+    <svg aria-hidden="true" focusable="false" viewBox={`0 0 ${PZ3_ICON_GRID} ${PZ3_ICON_GRID}`}>
       {icon.paths.map((definition) => (
         <path d={definition} key={definition} />
       ))}
@@ -888,7 +888,7 @@ function pointFeatures(coordinates: number[][]): GeoJSON.FeatureCollection<GeoJS
 /** Куски трассы, занятые этапами: цвет и приглушение едут в самих кусках. */
 function stageFeatures(
   ruler: RouteRuler,
-  stageSpans: Pz2StageSpanGroup[],
+  stageSpans: Pz3StageSpanGroup[],
   highlightedStageId: string,
 ): GeoJSON.FeatureCollection<GeoJSON.LineString> {
   return {

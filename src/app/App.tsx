@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { moduleRegistry } from '../modules/registry';
 import type { PzNumber } from '../modules/types';
 
@@ -6,6 +6,10 @@ export function App() {
   const requestedPz = new URLSearchParams(window.location.search).get('pz');
   const pzNumber = readPzNumber(window.location.search);
   const module = pzNumber === null ? undefined : moduleRegistry[pzNumber];
+
+  useEffect(() => {
+    document.title = module ? `ВСМ — ${module.shortTitle}` : 'ВСМ — модуль не найден';
+  }, [module]);
 
   if (!module) {
     return <ModuleNotFound requestedPz={requestedPz} />;
@@ -57,7 +61,7 @@ function ModuleNotFound({ requestedPz }: { requestedPz: string | null }) {
         <h1>Модуль не найден</h1>
         <p>
           Параметр <code>?pz=</code> сейчас равен: <strong>{label}</strong>. Доступны модули <code>?pz=1</code> и{' '}
-          <code>?pz=2</code>.
+          <code>?pz=3</code>.
         </p>
       </section>
     </main>

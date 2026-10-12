@@ -2,9 +2,8 @@ import type { BridgeSchema, BridgeSchemaVersion, Passport } from './schema';
 
 const CURRENT_SCHEMA_VERSION: BridgeSchemaVersion = '1.2';
 /**
- * Читаем и прежние версии: файл, сохранённый до появления ПЗ2, должен
- * открываться как раньше (ТЗ ПЗ2 §10). Разница только в наличии секции pz2,
- * ломающих изменений в 1.2 нет.
+ * Читаем и прежние версии. Сохранения прежнего номера задания переносим
+ * на актуальный ключ при загрузке; версия схемы при этом не меняется.
  */
 const SUPPORTED_SCHEMA_VERSIONS: BridgeSchemaVersion[] = ['1.0', '1.1', CURRENT_SCHEMA_VERSION];
 
@@ -59,7 +58,24 @@ export function parseBridgeJson(input: string): BridgeSchema {
     throw new Error(`Это не файл задания. ${EXPECTED_FILE_HINT}`);
   }
 
-  return parsed;
+  return migrateLegacyModuleKey(parsed);
+}
+
+/** Старые файлы хранили текущий модуль под номером 2. */
+function migrateLegacyModuleKey(bridge: BridgeSchema): BridgeSchema {
+  const legacyKey = 'pz2';
+  const migrateSection = (section: Record<string, unknown> | undefined) => {
+    if (!section || !(legacyKey in section)) return section;
+    const { [legacyKey]: legacyValue, ...current } = section;
+    return { ...current, pz3: current.pz3 ?? legacyValue };
+  };
+
+  return {
+    ...bridge,
+    completed: migrateSection(bridge.completed) as BridgeSchema['completed'],
+    ...(bridge.progress ? { progress: migrateSection(bridge.progress) as BridgeSchema['progress'] } : {}),
+    ...(bridge.position ? { position: migrateSection(bridge.position) as BridgeSchema['position'] } : {}),
+  };
 }
 
 /** Что именно нужно загрузить — повторяется во всех отказах, чтобы не гадать. */
