@@ -275,10 +275,7 @@ button:focus-visible {
   min-width: 0;
   height: 100%;
   overflow-y: auto;
-  border: 1px solid var(--border-strong);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.94);
-  padding: 18px 20px;
+  padding: 0;
   scrollbar-color: var(--border-strong) transparent;
   scrollbar-width: thin;
 }
@@ -527,9 +524,8 @@ button:focus-visible {
   grid-template-columns: minmax(0, 1fr) minmax(115px, 0.52fr);
   gap: 14px 20px;
   padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: #fff;
+  border-top: 1px solid var(--border);
+  background: transparent;
 }
 
 .works-list > div.is-overlapping {
@@ -646,7 +642,7 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid var(--border);
+  background: var(--bg-soft);
   border-radius: 10px;
   padding: 8px 10px;
 }
@@ -1099,10 +1095,10 @@ button:focus-visible {
 }
 
 .stage-card {
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   border-radius: 12px;
   padding: 12px 14px;
-  background: #fff;
+  background: var(--bg-soft);
 }
 
 /* Куда упадёт карточка — видно до того, как отпустишь кнопку мыши. */
@@ -1181,7 +1177,7 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid var(--border);
+  border: 1px solid transparent;
   /* Цвет полоски приходит с карточкой — это цвет её этапа. Здесь стоит вид
      работы без этапа: она лежит в пуле и ничьей раскраски не имеет. */
   border-left: 4px solid var(--border-strong);
@@ -1516,7 +1512,6 @@ button:focus-visible {
 
 .pz1-goal-card {
   margin-top: 16px;
-  border: 1px solid #cdeee1;
   border-radius: 10px;
   background: var(--teal-bg);
   padding: 14px;
@@ -1555,7 +1550,6 @@ button:focus-visible {
 
 .status-note {
   margin: 12px 0 0;
-  border: 1px solid #cdeee1;
   border-radius: 8px;
   background: var(--teal-bg);
   padding: 10px 12px;
@@ -1563,7 +1557,6 @@ button:focus-visible {
 }
 
 .status-note--error {
-  border-color: #f0c6c0;
   background: var(--danger-bg);
   color: var(--danger);
 }
@@ -1748,7 +1741,6 @@ button:focus-visible {
   position: relative;
   min-height: 360px;
   overflow: hidden;
-  border: 1px solid var(--border);
   border-radius: 10px;
   background: #fafaf8;
   cursor: crosshair;
@@ -1760,7 +1752,6 @@ button:focus-visible {
   position: relative;
   min-height: 420px;
   overflow: hidden;
-  border: 1px solid var(--border);
   border-radius: 10px;
   background: #f7f9fb;
 }
@@ -2392,7 +2383,6 @@ input.is-invalid {
 .forecast-chart {
   min-height: 390px;
   margin: 0;
-  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 16px 12px 12px;
 }
@@ -2483,6 +2473,15 @@ input.is-invalid {
   border-radius: 8px;
   scrollbar-color: var(--border-strong) transparent;
   scrollbar-width: thin;
+}
+
+/* Внутри карточки таблица уже отделена заголовком и строками: ещё одна
+   рамка вокруг неё создаёт ложную вложенную карточку. */
+.form-section .table-scroll,
+.forecast-summary-panel .table-scroll,
+.result-layout .table-scroll {
+  border: 0;
+  border-radius: 0;
 }
 
 .data-entry small {
@@ -2699,14 +2698,6 @@ input.is-invalid {
   flex-direction: column;
   min-width: 0;
   gap: 16px;
-}
-
-/* У результата остаётся одна поверхность для каждой смысловой области.
-   Общая рамка вокруг трёх карточек лишь дублировала их границы. */
-.phase-panel--result {
-  border: 0;
-  background: transparent;
-  padding: 0;
 }
 
 .result-layout--pz3 {
@@ -3001,7 +2992,7 @@ input.is-invalid {
   .phase-panel {
     width: 100%;
     min-width: 0;
-    padding: 14px;
+    padding: 0;
   }
 
   .module-actions {
@@ -3387,16 +3378,19 @@ input.is-invalid {
    имена полей открываются по требованию. */
 .missing-field-groups {
   display: grid;
-  gap: 6px;
+  gap: 0;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .missing-field-groups > li {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #fff;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+}
+
+.missing-field-groups > li:last-child {
+  border-bottom: 0;
 }
 
 .missing-field-groups summary {
