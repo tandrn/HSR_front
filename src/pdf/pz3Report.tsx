@@ -70,6 +70,7 @@ function Pz3ReportDocument({ summary }: { summary: Pz3PdfSummary }) {
   const measuredKm = result.measuredLengthKm;
   const difference = measuredKm - summary.routeLengthKm;
   const lengthMatches = Math.abs(difference) <= PZ3_LENGTH_TOLERANCE_KM;
+  const worksWithoutPosition = result.works.filter((work) => work.lengthKm !== null && !work.span).length;
 
   return (
     <Document
@@ -109,10 +110,15 @@ function Pz3ReportDocument({ summary }: { summary: Pz3PdfSummary }) {
 
         <Text style={styles.sectionTitle}>1. Трасса на карте</Text>
         <Text style={styles.paragraph}>
-          Трасса и станции — из ПЗ1; цветом показаны этапы, значками — мосты, тоннели, эстакады и стрелочные переводы.
-          Снимок сделан с той же карты и в той же проекции, что на экране, поэтому километраж на карте и в таблицах
-          ниже — один и тот же.
+          Трасса и станции перенесены из ПЗ1. Значками показаны объекты на трассе; цветом отмечены только те этапы,
+          для работ которых участок был измерен на карте. Снимок сделан с той же карты и в той же проекции, что на экране.
         </Text>
+        {worksWithoutPosition > 0 ? (
+          <Text style={styles.paragraph}>
+            Работ с длиной, введённой без отметок на карте: {worksWithoutPosition}. Их положение на трассе не задано,
+            поэтому эти участки на снимке не окрашены по этапам.
+          </Text>
+        ) : null}
         <MapPreview previewImage={summary.previewImage} />
         <WorkIconLegend result={result} />
       </Page>

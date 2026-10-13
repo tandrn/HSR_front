@@ -29,7 +29,7 @@ export function LevelingExercise() {
   }
 
   return (
-    <section className="form-section">
+    <section className="form-section leveling-exercise">
       <div className="osm-map-card__head">
         <div>
           <p className="eyebrow">Выравнивание загрузки</p>
@@ -45,7 +45,7 @@ export function LevelingExercise() {
         </button>
       </div>
 
-      <p className="status-note">
+      <p className="status-note leveling-exercise__intro">
         В бригаде {PZ3_LEVELING_LIMIT} человек, и больше их не станет. Работы на критическом пути держат срок — их
         двигать нельзя. У остальных есть резерв: сдвиньте их так, чтобы ни в один день не требовалось больше{' '}
         {PZ3_LEVELING_LIMIT} человек. Срок проекта от этого не изменится — в этом и смысл резерва.

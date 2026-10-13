@@ -240,10 +240,10 @@ function CheckMessage({
   );
 }
 
-function NetworkDiagram({ exercise }: { exercise: Pz3NetworkExercise }) {
+export function NetworkDiagram({ exercise }: { exercise: Pz3NetworkExercise }) {
   const positions: Record<string, [number, number]> = {
     A: [72, 70], B: [72, 230], C: [255, 70], D: [255, 230],
-    E: [445, 105], F: [445, 245], G: [640, 175],
+    H: [350, 70], E: [445, 105], F: [445, 245], G: [640, 175],
   };
   const links = exercise.works.flatMap((work) => work.predecessors.map((from) => [from, work.id] as const));
 

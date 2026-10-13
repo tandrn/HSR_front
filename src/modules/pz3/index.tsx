@@ -404,6 +404,9 @@ function Pz3ResultStep() {
   const source = getPz3RouteSource(importedBridge);
   const check = getPz3LengthCheck(draft, source.totalLengthKm);
   const inPool = getPz3StageWorks(draft, null).length;
+  const unplacedLinearWorks = draft.works.filter(
+    (work) => pz3WorkKinds.find((kind) => kind.id === work.kind)?.measure === 'length' && !work.span,
+  ).length;
 
   async function downloadPdf() {
     try {
@@ -428,7 +431,7 @@ function Pz3ResultStep() {
         },
         'vsm-pz3-report.pdf',
       );
-      setExportStatus('✓ Файл сохранён');
+      setExportStatus('PDF сформирован. Проверьте загрузки браузера.');
     } catch {
       setExportStatus('Не удалось сформировать PDF. Сохраните JSON и повторите экспорт.');
     }
@@ -436,11 +439,11 @@ function Pz3ResultStep() {
 
   function downloadJson() {
     jsonFileDraftStorage.save(createPz3Bridge(draft, importedBridge), 'vsm-pz3-bridge.json');
-    setExportStatus('✓ Файл сохранён');
+    setExportStatus('JSON подготовлен. Проверьте загрузки браузера.');
   }
 
   return (
-    <div className="result-layout">
+    <div className="result-layout result-layout--pz3">
       <div className="result-layout__aside">
         <section className="form-section">
           <p className="eyebrow">Итог</p>
@@ -448,7 +451,7 @@ function Pz3ResultStep() {
 
           <dl className="forecast-summary-grid forecast-summary-grid--compact">
             <div>
-              <dt>Намерено</dt>
+              <dt>Длина работ</dt>
               <dd>{formatPz3Km(check.measuredKm)}</dd>
             </div>
             <div>
@@ -479,6 +482,11 @@ function Pz3ResultStep() {
           ) : null}
 
           {inPool > 0 ? <p className="field-warning">В пуле осталось работ: {inPool}</p> : null}
+          {unplacedLinearWorks > 0 ? (
+            <p className="result-layout__map-note">
+              Линейных работ без отметок на карте: {unplacedLinearWorks}. Их участки не будут выделены в PDF.
+            </p>
+          ) : null}
         </section>
 
         <section className="result-actions">
@@ -494,7 +502,7 @@ function Pz3ResultStep() {
           <button className="button button--outline" onClick={downloadJson} type="button">
             Скачать JSON
           </button>
-          {exportStatus ? <p className="status-note">{exportStatus}</p> : null}
+          {exportStatus ? <p aria-live="polite" className="status-note">{exportStatus}</p> : null}
         </section>
       </div>
 

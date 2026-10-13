@@ -94,7 +94,9 @@ export function downloadTextFile(fileName: string, mimeType: string, content: st
   document.body.append(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  // Браузер может начать чтение blob уже после click(). Немедленный revoke
+  // срывал загрузку в отдельных Windows/WebView окружениях.
+  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
 function isBridgeSchema(value: unknown): value is BridgeSchema {

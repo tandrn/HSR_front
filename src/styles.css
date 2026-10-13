@@ -189,12 +189,10 @@ button:focus-visible {
 
 .module-workbar__title strong {
   display: block;
-  overflow: hidden;
   color: var(--indigo);
   font-size: 16px;
   line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .progress-route {
@@ -2696,13 +2694,24 @@ input.is-invalid {
   align-items: stretch;
 }
 
-.result-layout__aside {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  height: 100%;
+.result-layout--pz3 .result-layout__aside {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  gap: 22px;
-  align-content: stretch;
+  gap: 16px;
+}
+
+/* У результата остаётся одна поверхность для каждой смысловой области.
+   Общая рамка вокруг трёх карточек лишь дублировала их границы. */
+.phase-panel--result {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.result-layout--pz3 {
+  gap: 16px;
+  align-items: start;
 }
 
 .result-layout > *,
@@ -2712,7 +2721,7 @@ input.is-invalid {
 
 /* В левой колонке ровно три показателя: четвёртая пустая ячейка визуально
    ломала карточку и оставляла справа беспричинную четверть пространства. */
-.result-layout__aside .forecast-summary-grid {
+.result-layout--pz3 .result-layout__aside .forecast-summary-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -2753,6 +2762,12 @@ input.is-invalid {
   table-layout: fixed;
 }
 
+/* Для двух таблиц нужно хотя бы по 420 px. auto-fit раньше оставлял две
+   колонки уже этого минимума и прятал хвосты названий за их рамками. */
+.result-layout--pz3 .report-columns {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr));
+}
+
 .result-layout .report-columns tbody th {
   width: 70%;
   white-space: nowrap;
@@ -2775,14 +2790,54 @@ input.is-invalid {
 /* На итоговом экране ПЗ3 левая колонка заканчивается на одной линии с
    отчётом. Свободное место получает функциональная карточка экспорта, а
    подтверждение сохранения остаётся у её нижнего края. */
-.result-layout__aside .result-actions {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
+.result-layout--pz3 .result-layout__aside .result-actions {
+  display: grid;
+  gap: 12px;
 }
 
-.result-layout__aside .result-actions > .status-note:last-child {
-  margin-top: auto;
+.result-layout--pz3 .stage-list {
+  gap: 0;
+}
+
+.result-layout--pz3 .stage-card {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  padding: 12px 0;
+}
+
+.result-layout--pz3 .stage-card:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.result-layout__map-note {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* Два упражнения — разделы одной рабочей области, а не карточки внутри
+   карточки. Разделитель между ними сохраняет ориентацию при прокрутке. */
+.exercises-step > .form-section {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 4px 0 20px;
+}
+
+.exercises-step > .form-section + .form-section {
+  border-top: 1px solid var(--border-strong);
+  padding-top: 24px;
+}
+
+.leveling-exercise__intro {
+  margin: 18px 0;
+}
+
+.leveling-exercise > .forecast-summary-grid {
+  margin: 0 0 20px;
 }
 
 .theory-overlay {
