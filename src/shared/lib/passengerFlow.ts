@@ -101,8 +101,10 @@ export function forecastTotalDemand(input: TotalDemandForecastInput): TotalDeman
   const grpDelta = (grpFutureRegionA + grpFutureRegionB) / grpCurrentTotal;
   const populationDelta = (populationFutureRegionA + populationFutureRegionB) / populationCurrentTotal;
   const weightedGdpPassengerFlowCoefficient =
-    (input.populationCurrentRegionA * (input.gdpPassengerFlowCoefficientRegionA/100) +
-      input.populationCurrentRegionB * (input.gdpPassengerFlowCoefficientRegionB/100)) /
+    // Это безразмерный коэффициент (например, 0,95), а не процент 95.
+    // Деление на 100 уменьшало весь прогноз ПЗ1 ровно в сто раз.
+    (input.populationCurrentRegionA * input.gdpPassengerFlowCoefficientRegionA +
+      input.populationCurrentRegionB * input.gdpPassengerFlowCoefficientRegionB) /
     populationCurrentTotal;
   const baseForecast =
     input.existingAnnualFlow *
