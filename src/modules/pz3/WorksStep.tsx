@@ -10,8 +10,8 @@ import {
   findPz3OverlappingWorks,
   createPz3Work,
   formatPz3Km,
+  getPz3AvailableWorkPosition,
   getPz3LengthCheck,
-  getPz3DefaultWorkPosition,
   getPz3RouteSource,
   getPz3RoutePointMarks,
   getPz3SegmentMarks,
@@ -76,9 +76,14 @@ export function WorksStep() {
   function changeKind(id: string, kind: Pz3WorkKind) {
     updateDraft((current) => ({
       ...current,
-      works: current.works.map((object, index) =>
+      works: current.works.map((object) =>
         object.id === id
-          ? changePz3WorkKind(object, kind, ruler.totalKm, getPz3DefaultWorkPosition(index, ruler.totalKm))
+          ? changePz3WorkKind(
+              object,
+              kind,
+              ruler.totalKm,
+              getPz3AvailableWorkPosition(current, ruler.totalKm, stations.map((station) => station.distanceKm), id),
+            )
           : object,
       ),
     }));

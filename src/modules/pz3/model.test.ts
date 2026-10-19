@@ -11,6 +11,7 @@ import {
   createPz3Ruler,
   createPz3Stage,
   findPz3OverlappingWorks,
+  getPz3AvailableWorkPosition,
   getPz3RoutePointMarks,
   getPz3ExercisesProgress,
   getPz3SegmentMarks,
@@ -54,6 +55,21 @@ describe('справочник работ', () => {
       'tunnel',
       'turnout',
     ]);
+  });
+
+  it('показывает согласованные с заказчиком названия в работах и упражнениях', () => {
+    const labels = [
+      'Реконструкция существующего участка на балласте',
+      'Строительство нового участка на балласте',
+      'Сооружение земляного полотна под БВСП',
+      'Строительство эстакады с БВСП',
+      'Строительство моста с БВСП',
+      'Строительство железнодорожного тоннеля',
+      'Укладка стрелочного перевода марки 1/25',
+    ];
+
+    expect(pz3WorkKinds.map((kind) => kind.label)).toEqual(labels);
+    expect(pz3NetworkExercises.slice(0, 7).map((exercise) => exercise.title)).toEqual(labels);
   });
 
   it('стрелка меряется штуками, остальные — длиной', () => {
@@ -678,6 +694,20 @@ describe('значки сооружений на карте', () => {
       ['viaduct', true],
     ]);
     expect(setPz3WorkPosition(viaduct, 75, 200).positionKm).toBe(75);
+  });
+
+  it('новые значки не появляются поверх станции или уже размещённого объекта', () => {
+    const first = getPz3AvailableWorkPosition(draftWith([]), 200, [0, 40, 130, 200]);
+    expect(first).toBe(85);
+
+    const bridge = changePz3WorkKind(createPz3Work(), 'bridge', 200, first);
+    const second = getPz3AvailableWorkPosition(draftWith([bridge]), 200, [0, 40, 130, 200]);
+    expect(second).toBe(165);
+
+    const tunnel = changePz3WorkKind(createPz3Work(), 'tunnel', 200, second);
+    const third = getPz3AvailableWorkPosition(draftWith([bridge, tunnel]), 200, [0, 40, 130, 200]);
+    expect(third).toBe(62.5);
+    expect(new Set([first, second, third]).size).toBe(3);
   });
 
   it('у каждого значка есть контуры — иначе маркер будет пустым кружком', () => {

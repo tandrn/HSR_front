@@ -134,54 +134,48 @@ function Pz1Workspace() {
       title: 'Время в пути',
       goal: 'Заполните четыре составляющих реального времени в дороге для всех корреспонденций на одной странице.',
       content: <AllCorrespondenceTravelTimesStep />,
-      isComplete: hasCorrespondences,
-      completionHint: 'Назначьте минимум две станции, чтобы появились корреспонденции',
-      readyHint: describeStepReadiness(missing.byStep.get('Время в пути')),
+      isComplete: hasCorrespondences && !missing.byStep.get('Время в пути'),
+      completionHint: describeStepReadiness(hasCorrespondences, missing.byStep.get('Время в пути')),
     },
     {
       id: 'correspondence-discomfort',
       title: 'Коэффициент дискомфорта',
       goal: 'Проверьте существующие и прогнозные коэффициенты дискомфорта по всем корреспонденциям.',
       content: <AllCorrespondenceDiscomfortStep />,
-      isComplete: hasCorrespondences,
-      completionHint: 'Назначьте минимум две станции, чтобы появились корреспонденции',
-      readyHint: describeStepReadiness(missing.byStep.get('Коэффициент дискомфорта')),
+      isComplete: hasCorrespondences && !missing.byStep.get('Коэффициент дискомфорта'),
+      completionHint: describeStepReadiness(hasCorrespondences, missing.byStep.get('Коэффициент дискомфорта')),
     },
     {
       id: 'correspondence-frequency-fare',
       title: 'Частота сообщений и стоимость проезда',
       goal: 'Укажите частоту рейсов и стоимость проезда для всех корреспонденций.',
       content: <AllCorrespondenceFrequencyFareStep />,
-      isComplete: hasCorrespondences,
-      completionHint: 'Назначьте минимум две станции, чтобы появились корреспонденции',
-      readyHint: describeStepReadiness(missing.byStep.get('Частота сообщений и стоимость проезда')),
+      isComplete: hasCorrespondences && !missing.byStep.get('Частота сообщений и стоимость проезда'),
+      completionHint: describeStepReadiness(hasCorrespondences, missing.byStep.get('Частота сообщений и стоимость проезда')),
     },
     {
       id: 'station-other-parameters',
       title: 'Прочие параметры',
       goal: 'Проверьте городские, автомобильные и трудовые параметры по каждой станции линии.',
       content: <StationOtherParametersStep />,
-      isComplete: hasCorrespondences,
-      completionHint: 'Назначьте минимум две станции, чтобы появились станционные таблицы',
-      readyHint: describeStepReadiness(missing.byStep.get('Прочие параметры')),
+      isComplete: hasCorrespondences && !missing.byStep.get('Прочие параметры'),
+      completionHint: describeStepReadiness(hasCorrespondences, missing.byStep.get('Прочие параметры')),
     },
     {
       id: 'annual-flow',
       title: 'Годовой пассажиропоток',
       goal: 'Заполните вместимость и коэффициенты заполняемости для всех корреспонденций.',
       content: <AllCorrespondenceAnnualFlowStep />,
-      isComplete: hasCorrespondences,
-      completionHint: 'Назначьте минимум две станции, чтобы появились корреспонденции',
-      readyHint: describeStepReadiness(missing.byStep.get('Годовой пассажиропоток')),
+      isComplete: hasCorrespondences && !missing.byStep.get('Годовой пассажиропоток'),
+      completionHint: describeStepReadiness(hasCorrespondences, missing.byStep.get('Годовой пассажиропоток')),
     },
     {
       id: 'model',
       title: 'Модель прогноза',
       goal: 'Проверьте результат имитационной модели по всем корреспонденциям.',
       content: <AllCorrespondenceModelStep />,
-      isComplete: hasCorrespondences,
-      completionHint: 'Назначьте минимум две станции, чтобы появились корреспонденции',
-      readyHint: describeModelReadiness(missing.total),
+      isComplete: hasCorrespondences && missing.total === 0,
+      completionHint: describeModelReadiness(hasCorrespondences, missing.total),
     },
     {
       id: 'final-indicators',
@@ -903,7 +897,6 @@ function RegionalCharacteristicsStep() {
     <div className="regional-step">
       <section className="form-section">
         <p className="eyebrow">Регионы</p>
-        <h3>Характеристики регионов</h3>
         {stationRegions.length === 0 ? (
           <p className="status-note">Вернитесь к карте и выберите регион для каждой включённой станции.</p>
         ) : (
@@ -1203,7 +1196,6 @@ function CorrespondenceFrequencyStep({ pairKey }: { pairKey: string }) {
   return (
     <section className="form-section correspondence-detail">
       <p className="eyebrow">Частота сообщения</p>
-      <h3>{getCorrespondenceTitle(draft, detail.fromLabel, detail.toLabel)}</h3>
       <TransportSplitRows
         columns={getActiveTransportColumns(draft, pairKey)}
         getReadOnly={(modeId, side) => modeId === 'car' || (modeId === 'hSR' && side === 'existing')}
@@ -1240,7 +1232,6 @@ function CorrespondenceFareStep({ pairKey }: { pairKey: string }) {
   return (
     <section className="form-section correspondence-detail">
       <p className="eyebrow">Стоимость проезда</p>
-      <h3>{getCorrespondenceTitle(draft, detail.fromLabel, detail.toLabel)}</h3>
       <TransportSplitRows
         columns={getActiveTransportColumns(draft, pairKey)}
         getReadOnly={(modeId, side) => side === 'existing' && (modeId === 'hSR' || modeId === 'car')}
@@ -2127,30 +2118,20 @@ function getMissingFieldCounts(draft: Pz1Draft, details: ReturnType<typeof getSy
   return { byStep, total };
 }
 
-/**
- * Подпись под шагом, который пускает дальше, но заполнен не до конца.
- *
- * Значения по умолчанию заказчик задал только там, где они есть в методичке:
- * дискомфорт, прочие параметры, заполняемость. Для времени в пути, частоты и
- * стоимости их нет, и придумывать числа за студента нельзя — поэтому шаг
- * пропускает вперёд с незаполненными полями (SRS ФТ-15). Но и говорить «шаг
- * завершён» на пустой странице нельзя: расплата приходила через пять шагов,
- * списком из десятков полей, взявшимся как будто ниоткуда.
- */
-function describeStepReadiness(missingCount: number | undefined) {
-  if (!missingCount) {
-    return undefined;
+function describeStepReadiness(hasCorrespondences: boolean, missingCount: number | undefined) {
+  if (!hasCorrespondences) {
+    return 'Назначьте минимум две станции, чтобы появились данные для заполнения.';
   }
 
-  return `Не заполнено полей: ${missingCount}. Дальше пройти можно, но без них не построится модель прогноза.`;
+  return `Заполните обязательные поля на этом шаге: осталось ${missingCount ?? 0}.`;
 }
 
-function describeModelReadiness(missingCount: number) {
-  if (!missingCount) {
-    return undefined;
+function describeModelReadiness(hasCorrespondences: boolean, missingCount: number) {
+  if (!hasCorrespondences) {
+    return 'Назначьте минимум две станции, чтобы появились корреспонденции.';
   }
 
-  return `Не заполнено полей: ${missingCount} — они перечислены на странице. График появится, когда данные будут заполнены.`;
+  return `Не заполнено полей: ${missingCount}. Вернитесь к указанным шагам и заполните их для построения прогноза.`;
 }
 
 function getForecastMissingFields(draft: Pz1Draft, pairKey: string) {

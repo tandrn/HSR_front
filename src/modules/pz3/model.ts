@@ -53,33 +53,33 @@ interface Pz3WorkKindInfo {
 export const pz3WorkKinds: Pz3WorkKindInfo[] = [
   {
     id: 'existingLineRepair',
-    label: 'Ремонт существующей линии',
+    label: 'Реконструкция существующего участка на балласте',
     measure: 'length',
-    hint: 'Первые километры ВСМ идут по существующим путям: их ремонтируют, меняют подстанции.',
+    hint: 'Первые километры ВСМ идут по существующим путям: участок реконструируют, меняют подстанции.',
   },
   {
     id: 'ballastTrack',
-    label: 'Балластный путь',
+    label: 'Строительство нового участка на балласте',
     measure: 'length',
     hint: 'Щебень под шпальной решёткой. Укладывается быстро, но требует постоянного обслуживания.',
   },
   {
     id: 'earthworks',
-    label: 'Линия на земляном полотне',
+    label: 'Сооружение земляного полотна под БВСП',
     measure: 'length',
     hint: 'Высокая насыпь под пути: держит профиль ровным и повышает устойчивость.',
   },
   {
     id: 'viaduct',
-    label: 'Эстакада',
+    label: 'Строительство эстакады с БВСП',
     measure: 'length',
     hint: 'Путь на опорах — там, где насыпь невозможна или невыгодна.',
   },
-  { id: 'bridge', label: 'Мост', measure: 'length', hint: 'Переход через водную преграду.' },
-  { id: 'tunnel', label: 'Тоннель', measure: 'length', hint: 'Переход сквозь возвышенность.' },
+  { id: 'bridge', label: 'Строительство моста с БВСП', measure: 'length', hint: 'Переход через водную преграду.' },
+  { id: 'tunnel', label: 'Строительство железнодорожного тоннеля', measure: 'length', hint: 'Переход сквозь возвышенность.' },
   {
     id: 'turnout',
-    label: 'Стрелочный перевод 1/25',
+    label: 'Укладка стрелочного перевода марки 1/25',
     measure: 'count',
     hint: 'Путевое развитие на подходе к станции. Марка 1/25 — очень пологая, восемь приводов, считается отдельно.',
   },
@@ -305,6 +305,43 @@ export function changePz3WorkKind(
 /** Первые значки разводим по трассе, чтобы новые объекты не закрывали друг друга. */
 export function getPz3DefaultWorkPosition(index: number, routeKm: number): number {
   return routeKm * ((index % 4) + 1) / 5;
+}
+
+/** Находим свободное место для нового значка между станциями и уже отмеченными объектами. */
+export function getPz3AvailableWorkPosition(
+  draft: Pz3Draft,
+  routeKm: number,
+  stationDistancesKm: number[],
+  excludedWorkId?: string,
+): number {
+  if (!Number.isFinite(routeKm) || routeKm <= 0) {
+    return 0;
+  }
+
+  const occupied = [
+    0,
+    routeKm,
+    ...stationDistancesKm,
+    ...getPz3WorkMarks(
+      { ...draft, works: draft.works.filter((work) => work.id !== excludedWorkId) },
+      routeKm,
+    ).map((mark) => mark.distanceKm),
+  ]
+    .filter(Number.isFinite)
+    .map((distanceKm) => Math.max(0, Math.min(routeKm, distanceKm)))
+    .sort((left, right) => left - right);
+
+  let largestGap = -1;
+  let positionKm = routeKm / 2;
+  for (let index = 1; index < occupied.length; index += 1) {
+    const gap = occupied[index] - occupied[index - 1];
+    if (gap > largestGap) {
+      largestGap = gap;
+      positionKm = (occupied[index - 1] + occupied[index]) / 2;
+    }
+  }
+
+  return positionKm;
 }
 
 /** Перетаскивание переводит координату маркера в километраж и удерживает его на трассе. */
@@ -570,7 +607,7 @@ export function getPz3WorkMarks(draft: Pz3Draft, routeKm = 0): Pz3WorkMark[] {
         id: work.id,
         kind: work.kind,
         label: icon.label,
-        title: `Стрелочный перевод 1/25: ${count} шт. — ${formatPz3Km(distanceKm)} от начала трассы`,
+        title: `${getPz3WorkKind(work.kind).label}: ${count} шт. — ${formatPz3Km(distanceKm)} от начала трассы`,
         distanceKm,
         count,
         draggable: true,

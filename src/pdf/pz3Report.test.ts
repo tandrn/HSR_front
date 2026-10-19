@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createPz3PdfBlob, summarizePz3Works } from './pz3Report';
 import type { Pz3PdfSummary } from './pz3Report';
 import type { Pz3Result } from '../bridge/schema';
+import { pz3WorkKinds } from '../modules/pz3/model';
 
 const result: Pz3Result = {
   works: [
@@ -43,7 +44,7 @@ const summary: Pz3PdfSummary = {
   runId: 'run-1',
   routeLengthKm: 125,
   result,
-  workKindLabels: { earthworks: 'Линия на земляном полотне', turnout: 'Стрелочный перевод 1/25' },
+  workKindLabels: Object.fromEntries(pz3WorkKinds.map((kind) => [kind.id, kind.label])),
   conditionLabels: { weakSoil: 'Слабые грунты', rocky: 'Скальные породы' },
 };
 
@@ -51,8 +52,8 @@ describe('отчёт ПЗ3 в PDF', () => {
   it('сводит длину линейных работ и количество стрелок по отдельности', () => {
     const rows = summarizePz3Works(result, summary.workKindLabels);
 
-    expect(rows).toContainEqual(['Линия на земляном полотне', '1 уч. · 120,5 км']);
-    expect(rows).toContainEqual(['Стрелочный перевод 1/25', '4 шт.']);
+    expect(rows).toContainEqual(['Сооружение земляного полотна под БВСП', '1 уч. · 120,5 км']);
+    expect(rows).toContainEqual(['Укладка стрелочного перевода марки 1/25', '4 шт.']);
   });
   it('собирается в непустой PDF-файл', async () => {
     const blob = await createPz3PdfBlob(summary);

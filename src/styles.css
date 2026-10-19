@@ -2575,6 +2575,16 @@ input.is-invalid {
   gap: 8px;
 }
 
+.field-with-hint__control input {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.field-with-hint__control small {
+  flex: none;
+  white-space: nowrap;
+}
+
 .field-with-hint .field-error {
   grid-column: 2;
 }
@@ -2698,11 +2708,13 @@ input.is-invalid {
   flex-direction: column;
   min-width: 0;
   gap: 16px;
+  height: 100%;
 }
 
 .result-layout--pz3 {
+  grid-template-columns: minmax(360px, 0.7fr) minmax(0, 1.3fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .result-layout > *,
@@ -2784,6 +2796,7 @@ input.is-invalid {
 .result-layout--pz3 .result-layout__aside .result-actions {
   display: grid;
   gap: 12px;
+  flex: 1;
 }
 
 .result-layout--pz3 .stage-list {
@@ -2976,6 +2989,10 @@ input.is-invalid {
 
   .result-layout__aside {
     grid-template-rows: none;
+    height: auto;
+  }
+
+  .result-layout--pz3 .result-layout__aside {
     height: auto;
   }
 }
